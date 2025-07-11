@@ -1,0 +1,9 @@
+version: '3.8'
+services:
+  android-build:
+    build: .
+    volumes:
+      - .:/app
+    working_dir: /app
+    environment:
+      - ANDROID_SDK_ROOT=/opt/android-sdk
