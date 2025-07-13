@@ -53,7 +53,7 @@ fun MainScreen() {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)  // ← innerPadding 사용!
+                .padding(innerPadding)
         ) {
             when (currentRoute) {
                 Screen.Home.route -> HomeScreen()
