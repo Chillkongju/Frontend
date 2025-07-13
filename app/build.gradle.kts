@@ -10,7 +10,8 @@ android {
     defaultConfig {
         applicationId = "com.example.baba"
         minSdk = 24
-        versionCode = 34
+        targetSdk = 34
+        versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
