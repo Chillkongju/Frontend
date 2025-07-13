@@ -20,10 +20,10 @@ RUN cd ${ANDROID_SDK_ROOT} && \
 # SDK 컴포넌트 설치
 RUN yes | ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --sdk_root=${ANDROID_SDK_ROOT} \
     "platform-tools" \
+    "platforms;android-35" \
+    "build-tools;35.0.0" \
     "platforms;android-34" \
-    "build-tools;34.0.0" \
-    "platforms;android-33" \
-    "build-tools;33.0.0"
+    "build-tools;34.0.0"
 
 # 작업 디렉토리 설정
 WORKDIR /app
