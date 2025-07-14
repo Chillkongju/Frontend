@@ -15,6 +15,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.baba.ui.auth.LoginScreen
+import com.example.baba.ui.auth.SignupScreen
 import com.example.baba.ui.auth.Splash
 import com.example.baba.ui.common.BottomNavigationBar
 import com.example.baba.ui.home.HomeScreen
@@ -30,15 +32,30 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             var showSplash by remember { mutableStateOf(true) }
+            var isSignUp by remember { mutableStateOf(false) }
+            var isLoggedIn by remember { mutableStateOf(false) }
 
-            BABATheme {
-                if (showSplash) {
-                    Splash {
-                        showSplash = false
-                    }
-                } else {
-                    MainScreen()
+            when {
+                showSplash -> Splash {
+                    showSplash = false
                 }
+
+                isSignUp -> SignupScreen(
+                    onSignupComplete = {
+                        isSignUp = false
+                    }
+                )
+
+                !isLoggedIn -> LoginScreen(
+                    onLoginSuccess = {
+                        isLoggedIn = true
+                    },
+                    onSignupClick = {
+                        isSignUp = true
+                    }
+                )
+
+                else -> MainScreen()
             }
         }
     }
