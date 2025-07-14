@@ -2,40 +2,13 @@ package com.example.baba.ui.record
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Done
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,9 +18,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.baba.ui.theme.TextBlack
+import androidx.compose.foundation.layout.Spacer as Spacer1
 
-
+//화면 출력
 @Composable
 fun MyRecordScreen() {
     Scaffold(
@@ -67,8 +40,7 @@ fun MyRecordScreen() {
     }
 }
 
-
-// 1. 상단바
+// 1. 탑 바 구현
 @Composable
 fun TopBar() {
     Row(
@@ -81,93 +53,57 @@ fun TopBar() {
         Text("칠공주's", fontSize = 20.sp, fontWeight = FontWeight.Bold)
         Row {
             Icon(Icons.Default.Search, contentDescription = "Search")
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer1(modifier = Modifier.width(16.dp))
             Icon(Icons.Default.Settings, contentDescription = "Settings")
         }
     }
 }
 
-// 2. 프로필 카드
+// 2. 프로필 카드 구현
 @Composable
 fun ProfileCard() {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(240.dp) // 고정 높이 지정
+            .height(210.dp)
             .padding(horizontal = 16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            // 공유 / 편집 아이콘 - 우측 상단
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(3.dp)
-            ) {
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .height(250.dp)) {
 
-                Button(
-                    onClick = { /* TODO */ },
-                    shape = RoundedCornerShape(15.dp),
-                    //contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF000))
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Share, //임시 아이콘 (교체 예정)
-                        contentDescription = "Share",
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Button(
-                    onClick = { /* TODO */ },
-                    shape = RoundedCornerShape(15.dp),
-                    //contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF000))
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit, //임시 아이콘 (교체 예정)
-                        contentDescription = "Edit",
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-
-            // 프로필 내용 - 좌측 정렬
             Column(
                 modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(start = 16.dp)
+                    .align(Alignment.TopStart)
+                    .padding(start = 16.dp, top = 16.dp)
             ) {
-                Column {
-                    Icon(
-                        imageVector = Icons.Default.AccountCircle,
-                        contentDescription = "Profile Image",
-                        modifier = Modifier
-                            .size(75.dp)
-                            .padding(end = 12.dp)
-                            .testTag("profile_image")
-                    )
+                Icon(
+                    imageVector = Icons.Default.AccountCircle,
+                    contentDescription = "Profile Image",
+                    modifier = Modifier
+                        .size(75.dp)
+                        .testTag("profile_image")
+                )
 
-                    Column {
-                        Text(
-                            "칠공주",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
-                            modifier = Modifier.testTag("name"))
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            "안녕하세요 칠공주의 공간입니다.",
-                            fontSize = 13.sp,
-                            modifier = Modifier.testTag("coment"))
-                    }
-                }
+                Spacer1(modifier = Modifier.height(4.dp))
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "칠공주",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    modifier = Modifier.testTag("name")
+                )
+                Spacer1(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "안녕하세요 칠공주의 공간입니다.",
+                    fontSize = 13.sp,
+                    modifier = Modifier.testTag("coment")
+                )
 
-                // 팔로워 버튼
+                Spacer1(modifier = Modifier.height(12.dp))
+
                 Button(
                     onClick = { /* TODO */ },
                     shape = RoundedCornerShape(20.dp),
@@ -177,61 +113,153 @@ fun ProfileCard() {
                     Text("팔로워 3", fontSize = 12.sp, color = Color.Black)
                 }
             }
+
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Button(
+                    onClick = { },
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.size(36.dp),
+                    contentPadding = PaddingValues(0.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF000))
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Share,
+                        contentDescription = "Share",
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+
+                Button(
+                    onClick = { },
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.size(36.dp),
+                    contentPadding = PaddingValues(0.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF000))
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edit",
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+
         }
     }
 }
 
-
-// 3. 기간 필터 탭
+// 3. 시간 필터 탭
 @Composable
 fun TimeFilterTabs() {
     val tabs = listOf("올해", "이번 달", "평생")
     var selectedTab by remember { mutableStateOf(0) }
 
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-        tabs.forEachIndexed { index, title ->
-            Text(
-                text = title,
-                fontWeight = if (index == selectedTab) FontWeight.Bold else FontWeight.Normal,
-                modifier = Modifier
-                    .padding(8.dp)
-                    .clickable { selectedTab = index }
-            )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // 왼쪽 필터 버튼들
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            tabs.forEachIndexed { index, title ->
+                Button(
+                    onClick = { selectedTab = index },
+                    shape = RoundedCornerShape(20.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (index == selectedTab) Color.LightGray else Color.White
+                    )
+                ) {
+                    Text(
+                        text = title,
+                        fontSize = 12.sp,
+                        color = if (index == selectedTab) Color.Black else Color.Gray
+                    )
+                }
+            }
+        }
+
+        // 오른쪽 "기간" 버튼
+        Button(
+            onClick = { /* TODO: 기간 설정 기능 */ },
+            shape = RoundedCornerShape(20.dp),
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+        ) {
+            Text("기간 >", fontSize = 8.sp, color = Color.Black)
         }
     }
+
+    Spacer1(modifier = Modifier.height(8.dp)) // 하단 여백
 }
 
-// 4. 카테고리 탭
+// 4. 기록 분류
 @Composable
 fun CategoryTabs() {
-    val categories = listOf("전체 6", "도서 1", "영화 3", "공연 2")
+    val categoryNames = listOf("전체", "도서", "영화", "공연")
+    val categoryNums = listOf(6, 1, 3, 2)
     var selected by remember { mutableStateOf(0) }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly
+            .padding(horizontal = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        categories.forEachIndexed { i, text ->
+        categoryNames.forEachIndexed { i, name ->
             Box(
                 modifier = Modifier
+                    .weight(1f)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(if (i == selected) Color.LightGray else Color.White)
+                    .background(if (i == selected) Color.DarkGray else Color.LightGray)
                     .clickable { selected = i }
-                    .padding(vertical = 8.dp, horizontal = 16.dp)
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Text(text)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = name,
+                        color = if (i == selected) Color.White else Color.Black,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = categoryNums[i].toString(),
+                        color = if (i == selected) Color.White else Color.Black,
+                        fontSize = 22.sp
+                    )
+                }
             }
         }
     }
-    Spacer(modifier = Modifier.height(8.dp))
 }
 
 // 5. 기록 리스트
 @Composable
 fun RecordList() {
-    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+    Column(modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 16.dp)
+        .padding(top = 4.dp)) {
+
+        // ✅ fontWeight 파라미터 명시
+        Text(
+            text = "기록",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black
+        )
+
         Card(
             modifier = Modifier.fillMaxWidth(),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -242,28 +270,28 @@ fun RecordList() {
                         .size(64.dp)
                         .background(Color.LightGray)
                 ) {
-                    Icon(Icons.Default.DateRange, //임시 아이콘 (교체 예정)
-                        contentDescription = null,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
+                    Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.align(Alignment.Center))
                 }
-                Spacer(modifier = Modifier.width(12.dp))
+
+                Spacer1(modifier = Modifier.width(12.dp))
+
                 Column {
                     Text("하데스타운", fontWeight = FontWeight.Bold)
                     Text("공연", fontSize = 12.sp, color = Color.Gray)
+
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Done, //임시 아이콘 (교체 예정)
-                            contentDescription = null,
-                            tint = Color(0xFF1E88E5),
-                            modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Done, contentDescription = null, tint = Color(0xFF1E88E5), modifier = Modifier.size(16.dp))
                         Text("4.5", fontSize = 12.sp)
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer1(modifier = Modifier.width(8.dp))
                         Text("2025.07.09.", fontSize = 12.sp)
                     }
+
                     Text("추천해요", fontSize = 12.sp)
                 }
             }
         }
+
+        Spacer1(modifier = Modifier.height(16.dp)) // 여유 여백
     }
 }
 
