@@ -42,6 +42,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.runtime.derivedStateOf
@@ -285,9 +286,29 @@ fun FriendsScreen(navController: NavController? = null) {
                 }
 
                 item {
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(60.dp))
                 }
             }
+        }
+
+        if (showCommentModal && selectedPost != null) {
+            CommentBottomSheet(
+                post = selectedPost!!,
+                comments = postComments[selectedPost!!.id] ?: mutableListOf<Comment>().toMutableStateList(),
+                onDismiss = { showCommentModal = false },
+                onCommentAdded = { comment ->
+                    val postId = selectedPost!!.id
+                    if (postComments[postId] == null) {
+                        postComments[postId] = mutableListOf<Comment>().toMutableStateList()
+                    }
+                    postComments[postId]?.add(comment)
+                    commentCounts[postId] = (commentCounts[postId] ?: selectedPost!!.comments) + 1
+                },
+                onCommentDeleted = {
+                    val postId = selectedPost!!.id
+                    commentCounts[postId] = (commentCounts[postId] ?: 0) - 1
+                }
+            )
         }
     }
 }
@@ -533,5 +554,439 @@ fun FeedPostCard(
                 )
             }
         }
+    }
+}
+
+@Composable
+fun CommentBottomSheet(
+    post: FeedPost,
+    comments: SnapshotStateList<Comment>,
+    onDismiss: () -> Unit,
+    onCommentAdded: (Comment) -> Unit = {},
+    onCommentDeleted: () -> Unit = {}
+) {
+    var commentText by remember { mutableStateOf(TextFieldValue("")) }
+    var replyingTo by remember { mutableStateOf<Comment?>(null) }
+    var dragOffset by remember { mutableFloatStateOf(0f) }
+    var isDragging by remember { mutableStateOf(false) }
+
+    // 답글
+    val startReply = { comment: Comment ->
+        replyingTo = comment
+        val mentionText = "@${comment.userName} "
+        commentText = TextFieldValue(
+            text = mentionText,
+            selection = TextRange(mentionText.length)
+        )
+    }
+
+    // 댓글/답글 전송
+    val sendComment = {
+        if (commentText.text.isNotBlank()) {
+            val newComment = Comment(
+                id = System.currentTimeMillis().toInt(),
+                userName = "6812",
+                content = commentText.text,
+                timeAgo = "지금",
+                isReply = replyingTo != null,
+                parentCommentId = if (replyingTo != null) {
+                    if (replyingTo!!.isReply) {
+                        replyingTo!!.parentCommentId
+                    } else {
+                        replyingTo!!.id
+                    }
+                } else null,
+                mentionedUser = replyingTo?.userName
+            )
+            onCommentAdded(newComment)
+            commentText = TextFieldValue("")
+            replyingTo = null
+        }
+    }
+
+    val organizedComments by remember {
+        derivedStateOf {
+            val mainComments = comments.filter { !it.isReply }
+            val replies = comments.filter { it.isReply }
+            val result = mutableListOf<Comment>()
+
+            mainComments.forEach { mainComment ->
+                result.add(mainComment)
+                val mainCommentReplies = replies.filter { it.parentCommentId == mainComment.id }
+                    .sortedBy { it.id }
+                result.addAll(mainCommentReplies)
+            }
+            result
+        }
+    }
+
+    // 배경 투명도 계산
+    val backgroundAlpha = (0.5f - (dragOffset / 1000f)).coerceAtLeast(0f)
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = backgroundAlpha))
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDragStart = { isDragging = true },
+                    onDragEnd = {
+                        if (dragOffset > 150) {
+                            onDismiss()
+                        } else {
+                            dragOffset = 0f
+                        }
+                        isDragging = false
+                    }
+                ) { _, dragAmount ->
+                    if (dragAmount.y > 0) {
+                        dragOffset = (dragOffset + dragAmount.y).coerceAtLeast(0f)
+                    }
+                }
+            }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.7f)
+                .align(Alignment.BottomCenter)
+                .offset { IntOffset(0, dragOffset.toInt()) }
+                .background(
+                    Color.White,
+                    shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+                )
+                .clickable(enabled = false) { }
+        ) {
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Box(
+                modifier = Modifier
+                    .width(40.dp)
+                    .height(4.dp)
+                    .background(
+                        CoolGray300,
+                        shape = RoundedCornerShape(2.dp)
+                    )
+                    .align(Alignment.CenterHorizontally)
+                    .padding(top = 8.dp)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 답글 작성 헤더
+            if (replyingTo != null) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = CoolGray100
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "${replyingTo!!.userName}님에게 답글 작성 중",
+                            fontSize = 14.sp,
+                            color = CoolGray500,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(
+                            onClick = {
+                                replyingTo = null
+                                commentText = TextFieldValue("")
+                            }
+                        ) {
+                            Text(
+                                text = "✕",
+                                fontSize = 16.sp,
+                                color = CoolGray500
+                            )
+                        }
+                    }
+                }
+            }
+
+            // 댓글 리스트
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 16.dp)
+            ) {
+                if (organizedComments.isEmpty()) {
+                    item {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 200.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "아직 댓글이 없습니다",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = CoolGray700
+                            )
+                            Text(
+                                text = "댓글을 남겨보세요",
+                                fontSize = 14.sp,
+                                color = CoolGray500,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
+                    }
+                } else {
+                    items(organizedComments.size) { index ->
+                        CommentItem(
+                            comment = organizedComments[index],
+                            onReplyClick = startReply,
+                            onLikeClick = { comment ->
+                                val commentIndex = comments.indexOfFirst { it.id == comment.id }
+                                if (commentIndex != -1) {
+                                    val updatedComment = comments[commentIndex].copy(
+                                        isLiked = !comments[commentIndex].isLiked,
+                                        likeCount = if (comments[commentIndex].isLiked)
+                                            comments[commentIndex].likeCount - 1
+                                        else
+                                            comments[commentIndex].likeCount + 1
+                                    )
+                                    comments[commentIndex] = updatedComment
+                                }
+                            },
+                            onDeleteClick = { comment ->
+                                comments.removeIf { it.id == comment.id }
+                                onCommentDeleted()
+                            }
+                        )
+                    }
+                }
+            }
+
+            // 댓글 입력 영역
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shadowElevation = 8.dp,
+                color = Color.White
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_default_profile),
+                        contentDescription = "내 프로필",
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(CircleShape)
+                            .background(CoolGray200)
+                    )
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    OutlinedTextField(
+                        value = commentText,
+                        onValueChange = { commentText = it },
+                        placeholder = {
+                            Text(
+                                if (replyingTo != null) "답글 달기" else "댓글 달기",
+                                color = CoolGray300,
+                                fontSize = 14.sp
+                            )
+                        },
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        shape = RoundedCornerShape(30.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = CoolGray200,
+                            unfocusedBorderColor = CoolGray200,
+                            cursorColor = Blue2,
+                            focusedTextColor = TextBlack,
+                            unfocusedTextColor = TextBlack
+                        ),
+                        visualTransformation = MentionVisualTransformation(),
+                        trailingIcon = {
+                            if (commentText.text.isNotBlank()) {
+                                IconButton(onClick = sendComment) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.ic_comment_send),
+                                        contentDescription = "전송",
+                                        tint = Blue2,
+                                        modifier = Modifier.size(30.dp)
+                                    )
+                                }
+                            }
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
+fun CommentItem(
+    comment: Comment,
+    onReplyClick: (Comment) -> Unit = {},
+    onLikeClick: (Comment) -> Unit = {},
+    onDeleteClick: (Comment) -> Unit = {}
+) {
+    var showDropdownMenu by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                start = if (comment.isReply) 44.dp else 0.dp,
+                top = 8.dp,
+                bottom = 8.dp
+            )
+    ) {
+            Image(
+                painter = painterResource(id = comment.userProfileImage),
+                contentDescription = "프로필",
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(CoolGray200)
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = comment.userName,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = CoolGray700
+                        )
+
+                        // 답글인 경우 멘션 표시
+                        if (comment.isReply && comment.mentionedUser != null) {
+                            val annotatedString = buildAnnotatedString {
+                                pushStyle(SpanStyle(color = Blue2))
+                                append("@${comment.mentionedUser} ")
+                                pop()
+                                append(comment.content.removePrefix("@${comment.mentionedUser} "))
+                            }
+                            Text(
+                                text = annotatedString,
+                                fontSize = 14.sp,
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                        } else {
+                            Text(
+                                text = comment.content,
+                                fontSize = 14.sp,
+                                color = TextBlack,
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                        }
+                    }
+
+                    Box {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = comment.timeAgo,
+                                fontSize = 12.sp,
+                                color = CoolGray300
+                            )
+
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "더보기",
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .clickable { showDropdownMenu = true },
+                                tint = CoolGray500
+                            )
+                        }
+
+                        if (showDropdownMenu) {
+                            Box(
+                                modifier = Modifier
+                                    .offset(x = (-20).dp, y = 20.dp)
+                                    .width(50.dp)
+                                    .height(32.dp)
+                                    .background(
+                                        Color.White,
+                                        shape = RoundedCornerShape(6.dp)
+                                    )
+                                    .border(
+                                        width = 0.5.dp,
+                                        color = CoolGray200,
+                                        shape = RoundedCornerShape(6.dp)
+                                    )
+                                    .clickable {
+                                        showDropdownMenu = false
+                                        onDeleteClick(comment)
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "삭제",
+                                    fontSize = 12.sp,
+                                    color = Red1,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.padding(top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CompositionLocalProvider(LocalContentColor provides Color.Unspecified) {
+                            Icon(
+                                painter = painterResource(
+                                    id = if (comment.isLiked) R.drawable.ic_like_filled else R.drawable.ic_like_outline
+                                ),
+                                contentDescription = "좋아요",
+                                modifier = Modifier
+                                    .size(14.dp)
+                                    .clickable { onLikeClick(comment) },
+                                tint = if (comment.isLiked) Red1 else CoolGray500
+                            )
+                        }
+
+                        if (comment.likeCount > 0) {
+                            Text(
+                                text = comment.likeCount.toString(),
+                                fontSize = 12.sp,
+                                color = CoolGray500
+                            )
+                        }
+                    }
+
+                    CompositionLocalProvider(LocalContentColor provides Color.Unspecified) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_comment),
+                            contentDescription = "답글",
+                            modifier = Modifier
+                                .size(14.dp)
+                                .clickable { onReplyClick(comment) }
+                        )
+                    }
+                }
+            }
     }
 }
