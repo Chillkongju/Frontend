@@ -15,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.baba.ui.auth.Splash
 import com.example.baba.ui.common.BottomNavigationBar
 import com.example.baba.ui.home.HomeScreen
 import com.example.baba.ui.record.MyRecordScreen
@@ -28,8 +29,16 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
+            var showSplash by remember { mutableStateOf(true) }
+
             BABATheme {
-                MainScreen()
+                if (showSplash) {
+                    Splash {
+                        showSplash = false
+                    }
+                } else {
+                    MainScreen()
+                }
             }
         }
     }
@@ -53,7 +62,7 @@ fun MainScreen() {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)  // ← innerPadding 사용!
+                .padding(innerPadding)
         ) {
             when (currentRoute) {
                 Screen.Home.route -> HomeScreen()
