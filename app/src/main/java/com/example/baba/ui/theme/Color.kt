@@ -26,5 +26,7 @@ val CoolGray500 = Color(0xFF6B7280)
 val CoolGray700 = Color(0xFF374151)
 val TextBlack = Color(0xFF2A2A2A)
 
+val Red1 = Color(0xFFFF5565)
+
 val NavSelected = Blue3
 val NavUnselected = CoolGray500
