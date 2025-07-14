@@ -25,6 +25,9 @@ import com.example.baba.ui.recommendation.RecommendationScreen
 import com.example.baba.ui.friends.FriendsScreen
 import com.example.baba.ui.theme.BABATheme
 import com.example.baba.ui.common.Screen
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -91,7 +94,7 @@ fun MainScreen() {
     }
 }
 
-@Preview(showBackground = true)
+//@Preview(showBackground = true)
 @Composable
 fun MainScreenPreview() {
     BABATheme {

@@ -18,11 +18,32 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavHost
+import androidx.navigation.compose.rememberNavController
 import androidx.compose.foundation.layout.Spacer as Spacer1
 
 //화면 출력
 @Composable
 fun MyRecordScreen() {
+    var showRecordList by remember { mutableStateOf(false) }
+    var selectedCategory by remember { mutableStateOf("전체") }
+
+    if (showRecordList) {
+        MyRecordListScreen(category = selectedCategory)
+    } else {
+        MyRecordMainContent(
+            onCategoryClick = { category ->
+                selectedCategory = category
+                showRecordList = true
+            }
+        )
+    }
+}
+
+@Composable
+fun MyRecordMainContent(
+    onCategoryClick: (String) -> Unit
+) {
     Scaffold(
         topBar = { TopBar() }
     ) { innerPadding ->
@@ -30,15 +51,18 @@ fun MyRecordScreen() {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(bottom = 56.dp) // 바텀바 높이 고려
+                .padding(bottom = 56.dp)
         ) {
             item { ProfileCard() }
             item { TimeFilterTabs() }
-            item { CategoryTabs() }
+            item {
+                CategoryTabs(onCategoryClick) // 클릭 콜백 전달
+            }
             item { RecordList() }
         }
     }
 }
+
 
 // 1. 탑 바 구현
 @Composable
@@ -205,9 +229,9 @@ fun TimeFilterTabs() {
 
 // 4. 기록 분류
 @Composable
-fun CategoryTabs() {
-    val categoryNames = listOf("전체", "도서", "영화", "공연")
-    val categoryNums = listOf(6, 1, 3, 2)
+fun CategoryTabs(onCategoryClick: (String) -> Unit) {
+    val categoryName = listOf("전체", "도서", "영화", "공연")
+    val categoryNum = listOf("6", "1", "3", "2")
     var selected by remember { mutableStateOf(0) }
 
     Row(
@@ -216,29 +240,25 @@ fun CategoryTabs() {
             .padding(horizontal = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        categoryNames.forEachIndexed { i, name ->
+        categoryName.forEachIndexed { i, name ->
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(if (i == selected) Color.DarkGray else Color.LightGray)
-                    .clickable { selected = i }
+                    .background(Color.LightGray)
+                    .clickable {
+                        selected = i
+                        onCategoryClick(name) // ✅ 여기서 호출
+                    }
                     .padding(vertical = 12.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = name,
-                        color = if (i == selected) Color.White else Color.Black,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Text(
-                        text = categoryNums[i].toString(),
-                        color = if (i == selected) Color.White else Color.Black,
-                        fontSize = 22.sp
-                    )
-                }
+                Text(
+                    text = "$name ${categoryNum[i]}",
+                    color = Color.Black,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                )
             }
         }
     }
@@ -247,12 +267,13 @@ fun CategoryTabs() {
 // 5. 기록 리스트
 @Composable
 fun RecordList() {
-    Column(modifier = Modifier
-        .fillMaxWidth()
-        .padding(horizontal = 16.dp)
-        .padding(top = 4.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(top = 4.dp)
+    ) {
 
-        // ✅ fontWeight 파라미터 명시
         Text(
             text = "기록",
             fontSize = 16.sp,
@@ -260,17 +281,32 @@ fun RecordList() {
             color = Color.Black
         )
 
-        Card(
+        // 🔄 Card → Button 으로 변경
+        Button(
+            onClick = { /* TODO: 기록 상세 보기 등 */ },
             modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFFF5F5F5), // 카드처럼 연한 회색 배경
+                contentColor = Color.Black
+            ),
+            contentPadding = PaddingValues(16.dp),
+            shape = RoundedCornerShape(8.dp),
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
         ) {
-            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Box(
                     modifier = Modifier
                         .size(64.dp)
                         .background(Color.LightGray)
                 ) {
-                    Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.align(Alignment.Center))
+                    Icon(
+                        Icons.Default.DateRange,
+                        contentDescription = null,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
                 }
 
                 Spacer1(modifier = Modifier.width(12.dp))
@@ -280,7 +316,12 @@ fun RecordList() {
                     Text("공연", fontSize = 12.sp, color = Color.Gray)
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Done, contentDescription = null, tint = Color(0xFF1E88E5), modifier = Modifier.size(16.dp))
+                        Icon(
+                            Icons.Default.Done,
+                            contentDescription = null,
+                            tint = Color(0xFF1E88E5),
+                            modifier = Modifier.size(16.dp)
+                        )
                         Text("4.5", fontSize = 12.sp)
                         Spacer1(modifier = Modifier.width(8.dp))
                         Text("2025.07.09.", fontSize = 12.sp)
@@ -295,7 +336,8 @@ fun RecordList() {
     }
 }
 
-@Preview(showBackground = true, name = "MyRecord Preview")
+
+//@Preview(showBackground = true, name = "MyRecord Preview")
 @Composable
 fun MyRecordScreenPreview() {
     MyRecordScreen()
