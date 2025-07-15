@@ -291,9 +291,9 @@ fun CreateCategorySheet(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                CategoryButton("도서", R.drawable.recommend_book) { onCategoryClick("도서") }
-                CategoryButton("영화", R.drawable.recommend_movie) { onCategoryClick("영화") }
-                CategoryButton("공연", R.drawable.recommend_show) { onCategoryClick("공연") }
+                CategoryButton("도서", R.drawable.recommend_book) { onCategoryClick("BOOK") }
+                CategoryButton("영화", R.drawable.recommend_movie) { onCategoryClick("MOVIE") }
+                CategoryButton("공연", R.drawable.recommend_show) { onCategoryClick("PERFORMANCE") }
             }
         }
     }
