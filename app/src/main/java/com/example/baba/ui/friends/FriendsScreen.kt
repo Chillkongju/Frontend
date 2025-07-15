@@ -166,7 +166,7 @@ fun FriendsScreen(navController: NavController? = null) {
             comments = 10
         ),
         FeedPost(
-            id = 3,
+            id = 4,
             userName = "mmmuuu",
             userProfileImage = R.drawable.ic_default_profile,
             timeAgo = "9시간 전",
@@ -655,7 +655,7 @@ fun CommentBottomSheet(
                     Color.White,
                     shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
                 )
-                .clickable(enabled = false) { }
+//                .clickable(enabled = false) { }
         ) {
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -845,148 +845,149 @@ fun CommentItem(
                 bottom = 8.dp
             )
     ) {
-            Image(
-                painter = painterResource(id = comment.userProfileImage),
-                contentDescription = "프로필",
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(CoolGray200)
-            )
+        Image(
+            painter = painterResource(id = comment.userProfileImage),
+            contentDescription = "프로필",
+            modifier = Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(CoolGray200)
+        )
 
-            Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(12.dp))
 
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
+        Column(modifier = Modifier.weight(1f)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = comment.userName,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = CoolGray700
+                    )
+
+                    // 답글인 경우 멘션 표시
+                    if (comment.isReply && comment.mentionedUser != null) {
+                        val annotatedString = buildAnnotatedString {
+                            pushStyle(SpanStyle(color = Blue2))
+                            append("@${comment.mentionedUser} ")
+                            pop()
+                            append(comment.content.removePrefix("@${comment.mentionedUser} "))
+                        }
                         Text(
-                            text = comment.userName,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = CoolGray700
+                            text = annotatedString,
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(top = 2.dp)
                         )
-
-                        // 답글인 경우 멘션 표시
-                        if (comment.isReply && comment.mentionedUser != null) {
-                            val annotatedString = buildAnnotatedString {
-                                pushStyle(SpanStyle(color = Blue2))
-                                append("@${comment.mentionedUser} ")
-                                pop()
-                                append(comment.content.removePrefix("@${comment.mentionedUser} "))
-                            }
-                            Text(
-                                text = annotatedString,
-                                fontSize = 14.sp,
-                                modifier = Modifier.padding(top = 2.dp)
-                            )
-                        } else {
-                            Text(
-                                text = comment.content,
-                                fontSize = 14.sp,
-                                color = TextBlack,
-                                modifier = Modifier.padding(top = 2.dp)
-                            )
-                        }
-                    }
-
-                    Box {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                text = comment.timeAgo,
-                                fontSize = 12.sp,
-                                color = CoolGray300
-                            )
-
-                            Icon(
-                                imageVector = Icons.Default.MoreVert,
-                                contentDescription = "더보기",
-                                modifier = Modifier
-                                    .size(16.dp)
-                                    .clickable { showDropdownMenu = true },
-                                tint = CoolGray500
-                            )
-                        }
-
-                        if (showDropdownMenu) {
-                            Box(
-                                modifier = Modifier
-                                    .offset(x = (-20).dp, y = 20.dp)
-                                    .width(50.dp)
-                                    .height(32.dp)
-                                    .background(
-                                        Color.White,
-                                        shape = RoundedCornerShape(6.dp)
-                                    )
-                                    .border(
-                                        width = 0.5.dp,
-                                        color = CoolGray200,
-                                        shape = RoundedCornerShape(6.dp)
-                                    )
-                                    .clickable {
-                                        showDropdownMenu = false
-                                        onDeleteClick(comment)
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "삭제",
-                                    fontSize = 12.sp,
-                                    color = Red1,
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-                        }
+                    } else {
+                        Text(
+                            text = comment.content,
+                            fontSize = 14.sp,
+                            color = TextBlack,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
                     }
                 }
 
-                Row(
-                    modifier = Modifier.padding(top = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
+                Box {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        CompositionLocalProvider(LocalContentColor provides Color.Unspecified) {
-                            Icon(
-                                painter = painterResource(
-                                    id = if (comment.isLiked) R.drawable.ic_like_filled else R.drawable.ic_like_outline
-                                ),
-                                contentDescription = "좋아요",
-                                modifier = Modifier
-                                    .size(14.dp)
-                                    .clickable { onLikeClick(comment) },
-                                tint = if (comment.isLiked) Red1 else CoolGray500
-                            )
-                        }
+                        Text(
+                            text = comment.timeAgo,
+                            fontSize = 12.sp,
+                            color = CoolGray300
+                        )
 
-                        if (comment.likeCount > 0) {
-                            Text(
-                                text = comment.likeCount.toString(),
-                                fontSize = 12.sp,
-                                color = CoolGray500
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "더보기",
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clickable { showDropdownMenu = true },
+                            tint = CoolGray500
+                        )
                     }
 
-                    CompositionLocalProvider(LocalContentColor provides Color.Unspecified) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_comment),
-                            contentDescription = "답글",
+                    if (showDropdownMenu) {
+                        DropdownMenu(
+                            expanded = showDropdownMenu,
+                            onDismissRequest = { showDropdownMenu = false },
                             modifier = Modifier
-                                .size(14.dp)
-                                .clickable { onReplyClick(comment) }
-                        )
+                                .width(60.dp)
+                                .background(
+                                    Color.White,
+                                    shape = RoundedCornerShape(6.dp)
+                                )
+                        ) {
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = "삭제",
+                                        fontSize = 12.sp,
+                                        color = Red1,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                },
+                                onClick = {
+                                    showDropdownMenu = false
+                                    onDeleteClick(comment)
+                                },
+                                modifier = Modifier.height(32.dp),
+                                contentPadding = PaddingValues(0.dp)
+                            )
+                        }
                     }
                 }
             }
+
+            Row(
+                modifier = Modifier.padding(top = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CompositionLocalProvider(LocalContentColor provides Color.Unspecified) {
+                        Icon(
+                            painter = painterResource(
+                                id = if (comment.isLiked) R.drawable.ic_like_filled else R.drawable.ic_like_outline
+                            ),
+                            contentDescription = "좋아요",
+                            modifier = Modifier
+                                .size(14.dp)
+                                .clickable { onLikeClick(comment) },
+                            tint = if (comment.isLiked) Red1 else CoolGray500
+                        )
+                    }
+
+                    if (comment.likeCount > 0) {
+                        Text(
+                            text = comment.likeCount.toString(),
+                            fontSize = 12.sp,
+                            color = CoolGray500
+                        )
+                    }
+                }
+
+                CompositionLocalProvider(LocalContentColor provides Color.Unspecified) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_comment),
+                        contentDescription = "답글",
+                        modifier = Modifier
+                            .size(14.dp)
+                            .clickable { onReplyClick(comment) }
+                    )
+                }
+            }
+        }
     }
 }
