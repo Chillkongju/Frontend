@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
 import com.example.baba.data.auth.LoginRequest
 import com.example.baba.data.network.RetrofitInstance
+import com.example.baba.data.network.SessionManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -119,6 +120,12 @@ fun LoginScreen(
                         if (response.isSuccessful && response.body() != null) {
                             val message = response.body() ?: "응답 없음"
                             if (message == "로그인 성공") {
+                                SessionManager.userId = when (id) {
+                                    "user1" -> 1L
+                                    "user2" -> 2L
+                                    "admin" -> 99L
+                                    else -> -1L // 임시 userId
+                                }
                                 onLoginSuccess()
                             } else {
                                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
