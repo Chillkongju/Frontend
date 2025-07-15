@@ -131,7 +131,7 @@ fun CreateDetailScreen(
                 text = date.format(DateTimeFormatter.ofPattern("yyyy.MM.dd (E)", Locale.getDefault())),
                 color = Color.Gray
             )
-            Text(text = category, fontSize = 12.sp, color = Color.Gray)
+            Text(text = getCategoryLabel(category), fontSize = 12.sp, color = Color.Gray)
             Text(text = title, fontSize = 24.sp, fontWeight = FontWeight.Bold)
 
             // 별점
@@ -231,5 +231,14 @@ fun CreateDetailScreen(
                 }
             }
         }
+    }
+}
+
+fun getCategoryLabel(code: String): String {
+    return when (code) {
+        "BOOK" -> "도서"
+        "MOVIE" -> "영화"
+        "PERFORMANCE" -> "공연"
+        else -> "기타"
     }
 }
