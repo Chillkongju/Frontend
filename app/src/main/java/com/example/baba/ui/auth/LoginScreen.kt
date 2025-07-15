@@ -16,7 +16,7 @@ import com.example.baba.ui.theme.*
 import kotlinx.coroutines.*
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
-import com.example.baba.data.LoginRequest
+import com.example.baba.data.auth.LoginRequest
 import com.example.baba.data.network.RetrofitInstance
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -115,7 +115,7 @@ fun LoginScreen(
             onClick = {
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
-                        val response = RetrofitInstance.api.login(LoginRequest(id, password))
+                        val response = RetrofitInstance.authApi.login(LoginRequest(id, password))
                         if (response.isSuccessful && response.body() != null) {
                             val message = response.body() ?: "응답 없음"
                             if (message == "로그인 성공") {

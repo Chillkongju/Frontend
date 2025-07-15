@@ -1,4 +1,4 @@
-package com.example.baba.data
+package com.example.baba.data.auth
 
 import retrofit2.Response
 import retrofit2.http.*

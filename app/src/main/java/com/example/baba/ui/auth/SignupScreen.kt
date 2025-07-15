@@ -107,7 +107,7 @@ fun SignupScreen(
                     onClick = {
                         CoroutineScope(Dispatchers.IO).launch {
                             try {
-                                val response = RetrofitInstance.api.checkUsername(userId)
+                                val response = RetrofitInstance.authApi.checkUsername(userId)
                                 withContext(Dispatchers.Main) {
                                     if (response.isSuccessful && response.body() != null) {
                                         val isDuplicate = response.body()!!
@@ -172,7 +172,7 @@ fun SignupScreen(
             onClick = {
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
-                        val response = RetrofitInstance.api.signup(
+                        val response = RetrofitInstance.authApi.signup(
                             username = userId,
                             name = name,
                             password = password,
