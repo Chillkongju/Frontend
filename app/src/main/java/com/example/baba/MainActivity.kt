@@ -1,5 +1,6 @@
 package com.example.baba
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -25,18 +26,19 @@ import com.example.baba.ui.recommendation.RecommendationScreen
 import com.example.baba.ui.friends.FriendsScreen
 import com.example.baba.ui.theme.BABATheme
 import com.example.baba.ui.common.Screen
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        val sharedPref = getSharedPreferences("auth", Context.MODE_PRIVATE)
+        val token = sharedPref.getString("access_token", null)
+
         setContent {
             var showSplash by remember { mutableStateOf(true) }
             var isSignUp by remember { mutableStateOf(false) }
-            var isLoggedIn by remember { mutableStateOf(false) }
+            var isLoggedIn by remember { mutableStateOf(!token.isNullOrEmpty()) }
 
             when {
                 showSplash -> Splash {
