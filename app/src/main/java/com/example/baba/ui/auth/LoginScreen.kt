@@ -1,5 +1,6 @@
 package com.example.baba.ui.auth
 
+import android.content.Context
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -117,11 +118,19 @@ fun LoginScreen(
                     try {
                         val response = RetrofitInstance.api.login(LoginRequest(id, password))
                         if (response.isSuccessful && response.body() != null) {
-                            val message = response.body() ?: "응답 없음"
-                            if (message == "로그인 성공") {
-                                onLoginSuccess()
+                            val token = response.body() ?: ""
+                            if (token.isNotEmpty()) {
+                                val sharedPref = context.getSharedPreferences("auth", Context.MODE_PRIVATE)
+                                sharedPref.edit().putString("access_token", token).apply()
+
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(context, "로그인 성공", Toast.LENGTH_SHORT).show()
+                                    onLoginSuccess()
+                                }
                             } else {
-                                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(context, "로그인 실패: 빈 토큰", Toast.LENGTH_SHORT).show()
+                                }
                             }
                         } else {
                             withContext(Dispatchers.Main) {
