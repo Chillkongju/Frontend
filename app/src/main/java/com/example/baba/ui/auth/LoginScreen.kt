@@ -13,6 +13,11 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.baba.ui.theme.*
+import kotlinx.coroutines.*
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
+import com.example.baba.data.LoginRequest
+import com.example.baba.data.network.RetrofitInstance
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,8 +109,32 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        val context = LocalContext.current
+
         Button(
-            onClick = { onLoginSuccess() }, // 로그인 처리
+            onClick = {
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        val response = RetrofitInstance.api.login(LoginRequest(id, password))
+                        if (response.isSuccessful && response.body() != null) {
+                            val message = response.body() ?: "응답 없음"
+                            if (message == "로그인 성공") {
+                                onLoginSuccess()
+                            } else {
+                                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(context, "로그인 실패: ${response.code()}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(context, "서버 오류: ${e.message}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(45.dp),
@@ -125,7 +154,7 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(12.dp))
 
         OutlinedButton(
-            onClick = { onSignupClick() }, // 회원가입 처리
+            onClick = { onSignupClick() },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(45.dp),
