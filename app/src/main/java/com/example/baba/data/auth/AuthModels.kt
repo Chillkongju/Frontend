@@ -1,4 +1,4 @@
-package com.example.baba.data
+package com.example.baba.data.auth
 
 // 로그인 요청
 data class LoginRequest(
