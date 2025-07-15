@@ -1,6 +1,10 @@
 package com.example.baba.ui.home
 
 import android.net.Uri
+import android.util.Log
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,19 +23,25 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
+import com.example.baba.data.network.RetrofitInstance
+import com.example.baba.data.record.DiaryCreateRequest
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateDetailScreen(
+    userId: Long,
     category: String,
     date: LocalDate,
     title: String,
@@ -45,12 +55,14 @@ fun CreateDetailScreen(
     includeSpoiler: Boolean,
     onSpoilerChange: (Boolean) -> Unit,
     photos: List<Uri>,
-    onPhotosChange: (List<Uri>) -> Unit,  // ✅ 새로운 사진 리스트 반영용 콜백
+    onPhotosChange: (List<Uri>) -> Unit,  // 새로운 사진 리스트 반영용 콜백
     onRemovePhoto: (Int) -> Unit,
     onBack: () -> Unit,
     onSave: () -> Unit
 ) {
-    // ✅ 갤러리 런처
+    val context = LocalContext.current
+
+    // 갤러리 런처
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
@@ -69,7 +81,37 @@ fun CreateDetailScreen(
                 },
                 title = { Text("새 기록", fontSize = 18.sp) },
                 actions = {
-                    TextButton(onClick = onSave) {
+                    TextButton(
+                        onClick = {
+                            val request = DiaryCreateRequest(
+                                title = title,
+                                content = review,
+                                category = category,
+                                rating = rating.toInt(),
+                                watchedAt = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                            )
+                            CoroutineScope(Dispatchers.IO).launch {
+                                try {
+                                    val response = RetrofitInstance.diaryApi.createDiary(
+                                        userId = userId,
+                                        diaryCreateRequest = request
+                                    )
+                                    withContext(Dispatchers.Main) {
+                                        if (response.isSuccessful) {
+                                            Toast.makeText(context, "기록 저장 성공", Toast.LENGTH_SHORT).show()
+                                            onSave()
+                                        } else {
+                                            Toast.makeText(context, "저장 실패: ${response.code()}", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(context, "에러: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        }
+                    ) {
                         Text("저장")
                     }
                 },
@@ -85,13 +127,23 @@ fun CreateDetailScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // 날짜, 카테고리, 제목
-            Text(text = date.format(DateTimeFormatter.ofPattern("yyyy.MM.dd (E)", Locale.getDefault())), color = Color.Gray)
+            Text(
+                text = date.format(DateTimeFormatter.ofPattern("yyyy.MM.dd (E)", Locale.getDefault())),
+                color = Color.Gray
+            )
             Text(text = category, fontSize = 12.sp, color = Color.Gray)
             Text(text = title, fontSize = 24.sp, fontWeight = FontWeight.Bold)
 
             // 별점
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(text = String.format(Locale.getDefault(), "%.1f", rating), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = String.format(Locale.getDefault(), "%.1f", rating),
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
                 repeat(5) { i ->
                     val icon = when {
                         rating >= i + 1f -> Icons.Filled.Star
@@ -115,7 +167,9 @@ fun CreateDetailScreen(
                 value = review,
                 onValueChange = onReviewChange,
                 placeholder = { Text("‘$title’에 대해 어떻게 생각하시나요?") },
-                modifier = Modifier.fillMaxWidth().height(120.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp)
             )
 
             // 장소
@@ -128,7 +182,10 @@ fun CreateDetailScreen(
             )
 
             // 공개 / 스포일러
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("전체 공개", fontSize = 16.sp)
                     Switch(checked = isPublic, onCheckedChange = onPublicChange)
@@ -176,4 +233,3 @@ fun CreateDetailScreen(
         }
     }
 }
-
