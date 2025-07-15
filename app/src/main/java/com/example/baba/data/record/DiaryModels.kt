@@ -9,3 +9,12 @@ data class DiaryCreateRequest(
     // val public: Boolean,
     // val spoiler: Boolean,
 )
+
+data class DiaryResponse(
+    val id: Long,
+    val title: String,
+    val content: String,
+    val category: String,
+    val categoryLabel: String,
+    val createdDate: String
+)

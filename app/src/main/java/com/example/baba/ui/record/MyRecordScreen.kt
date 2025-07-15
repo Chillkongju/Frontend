@@ -1,5 +1,6 @@
 package com.example.baba.ui.record
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -18,11 +19,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavHost
-import androidx.navigation.compose.rememberNavController
-import androidx.compose.foundation.layout.Spacer as Spacer1
+import coil.compose.AsyncImage
+import com.example.baba.data.network.RetrofitInstance
+import com.example.baba.data.record.DiaryResponse
+import androidx.compose.foundation.layout.Spacer
 
 //화면 출력
+@Preview(showBackground = true)
 @Composable
 fun MyRecordScreen() {
     var showRecordList by remember { mutableStateOf(false) }
@@ -44,6 +47,8 @@ fun MyRecordScreen() {
 fun MyRecordMainContent(
     onCategoryClick: (String) -> Unit
 ) {
+    var categoryCounts by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
+
     Scaffold(
         topBar = { TopBar() }
     ) { innerPadding ->
@@ -56,9 +61,11 @@ fun MyRecordMainContent(
             item { ProfileCard() }
             item { TimeFilterTabs() }
             item {
-                CategoryTabs(onCategoryClick) // 클릭 콜백 전달
+                CategoryTabs(onCategoryClick, categoryCounts)
             }
-            item { RecordList() }
+            item {
+                RecordList(onCountReady = { counts -> categoryCounts = counts })
+            }
         }
     }
 }
@@ -77,7 +84,7 @@ fun TopBar() {
         Text("칠공주's", fontSize = 20.sp, fontWeight = FontWeight.Bold)
         Row {
             Icon(Icons.Default.Search, contentDescription = "Search")
-            Spacer1(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(16.dp))
             Icon(Icons.Default.Settings, contentDescription = "Settings")
         }
     }
@@ -111,7 +118,7 @@ fun ProfileCard() {
                         .testTag("profile_image")
                 )
 
-                Spacer1(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
                     text = "칠공주",
@@ -119,14 +126,14 @@ fun ProfileCard() {
                     fontSize = 16.sp,
                     modifier = Modifier.testTag("name")
                 )
-                Spacer1(modifier = Modifier.height(2.dp))
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = "안녕하세요 칠공주의 공간입니다.",
                     fontSize = 13.sp,
                     modifier = Modifier.testTag("coment")
                 )
 
-                Spacer1(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Button(
                     onClick = { /* TODO */ },
@@ -224,14 +231,16 @@ fun TimeFilterTabs() {
         }
     }
 
-    Spacer1(modifier = Modifier.height(8.dp)) // 하단 여백
+    Spacer(modifier = Modifier.height(8.dp)) // 하단 여백
 }
 
 // 4. 기록 분류
 @Composable
-fun CategoryTabs(onCategoryClick: (String) -> Unit) {
+fun CategoryTabs(
+    onCategoryClick: (String) -> Unit,
+    categoryCounts: Map<String, Int> = mapOf("전체" to 0, "도서" to 0, "영화" to 0, "공연" to 0)
+) {
     val categoryName = listOf("전체", "도서", "영화", "공연")
-    val categoryNum = listOf("6", "1", "3", "2")
     var selected by remember { mutableStateOf(0) }
 
     Row(
@@ -241,6 +250,7 @@ fun CategoryTabs(onCategoryClick: (String) -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         categoryName.forEachIndexed { i, name ->
+            val count = categoryCounts[name] ?: 0
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -248,13 +258,13 @@ fun CategoryTabs(onCategoryClick: (String) -> Unit) {
                     .background(Color.LightGray)
                     .clickable {
                         selected = i
-                        onCategoryClick(name) // ✅ 여기서 호출
+                        onCategoryClick(name)
                     }
                     .padding(vertical = 12.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "$name ${categoryNum[i]}",
+                    text = "$name $count",
                     color = Color.Black,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium
@@ -264,75 +274,107 @@ fun CategoryTabs(onCategoryClick: (String) -> Unit) {
     }
 }
 
+
 // 5. 기록 리스트
 @Composable
-fun RecordList() {
+fun RecordList(onCountReady: (Map<String, Int>) -> Unit = {}) {
+    var diaries by remember { mutableStateOf<List<DiaryResponse>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        try {
+            val userId = 1L
+            val response = RetrofitInstance.diaryApi.getAllMyDiaries(userId)
+            if (response.isSuccessful) {
+                val data = response.body() ?: emptyList()
+                diaries = data
+
+                // 카테고리별 개수 계산
+                val counts = mapOf(
+                    "전체" to data.size,
+                    "도서" to data.count { it.category == "BOOK" },
+                    "영화" to data.count { it.category == "MOVIE" },
+                    "공연" to data.count { it.category == "PERFORMANCE" },
+                )
+                onCountReady(counts)
+            }
+        } catch (e: Exception) {
+            Log.e("RecordList", "일기 불러오기 실패: ${e.message}")
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .padding(top = 4.dp)
     ) {
+        Text("기록", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.Black)
 
-        Text(
-            text = "기록",
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.Black
-        )
+        diaries.forEach { diary ->
+            DiaryCard(diary)
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+    }
+}
 
-        // 🔄 Card → Button 으로 변경
-        Button(
-            onClick = { /* TODO: 기록 상세 보기 등 */ },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFFF5F5F5), // 카드처럼 연한 회색 배경
-                contentColor = Color.Black
-            ),
-            contentPadding = PaddingValues(16.dp),
-            shape = RoundedCornerShape(8.dp),
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+
+@Composable
+fun DiaryCard(diary: DiaryResponse) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(100.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(12.dp)
+                .fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+            // 썸네일 이미지 (임시)
+            AsyncImage(
+                model = "https://via.placeholder.com/80", // 썸네일 이미지 URL 또는 diary.imageUrl
+                contentDescription = "썸네일",
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.LightGray)
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // 텍스트 정보
+            Column(
+                verticalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxHeight()
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .background(Color.LightGray)
-                ) {
-                    Icon(
-                        Icons.Default.DateRange,
-                        contentDescription = null,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-
-                Spacer1(modifier = Modifier.width(12.dp))
-
-                Column {
-                    Text("하데스타운", fontWeight = FontWeight.Bold)
-                    Text("공연", fontSize = 12.sp, color = Color.Gray)
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Done,
-                            contentDescription = null,
-                            tint = Color(0xFF1E88E5),
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Text("4.5", fontSize = 12.sp)
-                        Spacer1(modifier = Modifier.width(8.dp))
-                        Text("2025.07.09.", fontSize = 12.sp)
-                    }
-
-                    Text("추천해요", fontSize = 12.sp)
-                }
+                Text(
+                    text = diary.title,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    maxLines = 1
+                )
+                Text(
+                    text = diary.categoryLabel,
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
+                Text(
+                    text = diary.createdDate.split(" ")[0],  // 날짜만
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
+                Text(
+                    text = diary.content,
+                    fontSize = 12.sp,
+                    color = Color.DarkGray,
+                    maxLines = 1
+                )
             }
         }
-
-        Spacer1(modifier = Modifier.height(16.dp)) // 여유 여백
     }
 }
 

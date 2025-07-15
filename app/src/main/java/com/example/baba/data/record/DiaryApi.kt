@@ -9,4 +9,7 @@ interface DiaryApi {
         @Query("id") userId: Long,
         @Body diaryCreateRequest: DiaryCreateRequest
     ): Response<Void>
+
+    @GET("diaries/me")
+    suspend fun getAllMyDiaries(@Query("id") userId: Long): Response<List<DiaryResponse>>
 }
