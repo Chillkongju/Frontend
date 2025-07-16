@@ -2,6 +2,7 @@ package com.example.baba.ui.record
 
 import android.net.Uri
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -65,12 +66,13 @@ fun RecordDetailScreen(
     var isDeleting by remember { mutableStateOf(false) }
     var showDropdownMenu by remember { mutableStateOf(false) }
     var showCommentBottomSheet by remember { mutableStateOf(false) }
+
+    // 좋아요 관련 상태
     var isLiked by remember { mutableStateOf(false) }
-    var likeCount by remember { mutableStateOf(8) }
+    var isLoadingLike by remember { mutableStateOf(false) }
 
     // 댓글 관리
     val comments = remember { mutableListOf<Comment>().toMutableStateList() }
-    var commentCount by remember { mutableStateOf(6) }
 
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -80,9 +82,59 @@ fun RecordDetailScreen(
     var isLoadingRecommendations by remember { mutableStateOf(false) }
     var recommendationError by remember { mutableStateOf<String?>(null) }
 
-    // 더미 댓글 데이터 초기화
-    LaunchedEffect(Unit) {
-        comments.addAll(getDummyCommentsForRecord())
+    // 좋아요 상태 초기화
+    LaunchedEffect(record.id) {
+        coroutineScope.launch {
+            try {
+                val memberResponse = RetrofitInstance.memberApi.getMyInfo()
+                if (memberResponse.isSuccessful) {
+                    val username = memberResponse.body()?.username
+                    if (username != null) {
+                        // 좋아요 여부 확인
+                        val loveResponse = RetrofitInstance.loveApi.checkLove(username, record.id)
+                        if (loveResponse.isSuccessful) {
+                            isLiked = loveResponse.body() ?: false
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("RecordDetail", "좋아요 상태 조회 실패: ${e.message}")
+            }
+        }
+    }
+
+    // 좋아요 토글 함수
+    val toggleLike = {
+        if (!isLoadingLike) {
+            coroutineScope.launch {
+                isLoadingLike = true
+                try {
+                    val memberResponse = RetrofitInstance.memberApi.getMyInfo()
+                    if (memberResponse.isSuccessful) {
+                        val username = memberResponse.body()?.username
+                        if (username != null) {
+                            val response = RetrofitInstance.loveApi.toggleLove(username, record.id)
+                            if (response.isSuccessful) {
+                                val responseMessage = response.body()
+                                val newLikedState = responseMessage?.contains("등록") == true
+
+                                isLiked = newLikedState
+
+                                Log.d("RecordDetail", "좋아요 토글 성공: $responseMessage")
+                            } else {
+                                Toast.makeText(context, "좋아요 처리에 실패했습니다", Toast.LENGTH_SHORT).show()
+                                Log.e("RecordDetail", "좋아요 토글 실패: ${response.code()}")
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(context, "네트워크 오류가 발생했습니다", Toast.LENGTH_SHORT).show()
+                    Log.e("RecordDetail", "좋아요 토글 오류: ${e.message}")
+                } finally {
+                    isLoadingLike = false
+                }
+            }
+        }
     }
 
     // 추천 작품 로드
@@ -187,7 +239,7 @@ fun RecordDetailScreen(
                 .padding(start = 16.dp, end = 16.dp, top = 16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            // 상단 헤더 (뒤로가기 버튼과 더보기 버튼)
+            // 상단 헤더
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -278,7 +330,6 @@ fun RecordDetailScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 이미지와 텍스트 정보를 가로로 배치
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -337,7 +388,6 @@ fun RecordDetailScreen(
 
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    // 날짜와 별점을 세로 선으로 구분
                     Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -462,11 +512,13 @@ fun RecordDetailScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // 좋아요 버튼
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    CompositionLocalProvider(LocalContentColor provides Color.Unspecified) {
+                CompositionLocalProvider(LocalContentColor provides Color.Unspecified) {
+                    if (isLoadingLike) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
                         Icon(
                             painter = painterResource(
                                 id = if (isLiked) R.drawable.ic_like_filled else R.drawable.ic_like_outline
@@ -474,42 +526,23 @@ fun RecordDetailScreen(
                             contentDescription = "좋아요",
                             modifier = Modifier
                                 .size(20.dp)
-                                .clickable {
-                                    isLiked = !isLiked
-                                    likeCount += if (isLiked) 1 else -1
-                                }
+                                .clickable { toggleLike() }
                         )
                     }
-
-                    Text(
-                        text = likeCount.toString(),
-                        fontSize = 20.sp,
-                        color = CoolGray700
-                    )
                 }
 
                 Spacer(modifier = Modifier.width(16.dp))
 
                 // 댓글 버튼
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    CompositionLocalProvider(LocalContentColor provides Color.Unspecified) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_comment),
-                            contentDescription = "댓글",
-                            modifier = Modifier
-                                .size(20.dp)
-                                .clickable {
-                                    showCommentBottomSheet = true
-                                }
-                        )
-                    }
-                    Text(
-                        text = commentCount.toString(),
-                        fontSize = 20.sp,
-                        color = CoolGray700
+                CompositionLocalProvider(LocalContentColor provides Color.Unspecified) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_comment),
+                        contentDescription = "댓글",
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clickable {
+                                showCommentBottomSheet = true
+                            }
                     )
                 }
             }
@@ -525,93 +558,14 @@ fun RecordDetailScreen(
             onDismiss = { showCommentBottomSheet = false },
             onCommentAdded = { comment ->
                 comments.add(comment)
-                commentCount += 1
             },
             onCommentDeleted = {
-                commentCount -= 1
+                // 댓글 삭제 처리
             },
             currentUserName = currentUserName,
             currentUserProfileImage = currentUserProfileImage
         )
     }
-}
-
-// RecordDetailScreen용 더미 댓글 데이터
-fun getDummyCommentsForRecord(): List<Comment> {
-    return listOf(
-        Comment(
-            id = 1,
-            userName = "호두왕자",
-            userProfileImage = R.drawable.ic_default_profile,
-            content = "정말 감동적인 작품이었어요! 저도 봤는데 눈물이 났습니다.",
-            timeAgo = "2분 전",
-            isReply = false,
-            parentCommentId = null,
-            mentionedUser = null,
-            isLiked = false,
-            likeCount = 3
-        ),
-        Comment(
-            id = 2,
-            userName = "쑤인",
-            userProfileImage = R.drawable.ic_default_profile,
-            content = "디어 에반 핸슨 진짜 명작이죠ㅠㅠ 'You Will Be Found' 들으면서 울었어요",
-            timeAgo = "15분 전",
-            isReply = false,
-            parentCommentId = null,
-            mentionedUser = null,
-            isLiked = true,
-            likeCount = 5
-        ),
-        Comment(
-            id = 3,
-            userName = "시새린",
-            userProfileImage = R.drawable.ic_default_profile,
-            content = "공연 리뷰 잘 읽었어요. 저도 꼭 보러 가야겠네요!",
-            timeAgo = "1시간 전",
-            isReply = false,
-            parentCommentId = null,
-            mentionedUser = null,
-            isLiked = false,
-            likeCount = 1
-        ),
-        Comment(
-            id = 4,
-            userName = "6812",
-            userProfileImage = R.drawable.ic_default_profile,
-            content = "네! 정말 좋은 공연이에요",
-            timeAgo = "50분 전",
-            isReply = true,
-            parentCommentId = 3,
-            mentionedUser = "시새린",
-            isLiked = false,
-            likeCount = 0
-        ),
-        Comment(
-            id = 5,
-            userName = "mmmuuu",
-            userProfileImage = R.drawable.ic_default_profile,
-            content = "4.5점이면 정말 좋았나보네요. 추천해주셔서 감사해요!",
-            timeAgo = "2시간 전",
-            isReply = false,
-            parentCommentId = null,
-            mentionedUser = null,
-            isLiked = false,
-            likeCount = 2
-        ),
-        Comment(
-            id = 6,
-            userName = "바바유저",
-            userProfileImage = R.drawable.ic_default_profile,
-            content = "같은 공연 봤는데 정말 공감돼요. 리뷰 잘 써주셨네요👏",
-            timeAgo = "3시간 전",
-            isReply = false,
-            parentCommentId = null,
-            mentionedUser = null,
-            isLiked = true,
-            likeCount = 4
-        )
-    )
 }
 
 @Preview(showBackground = true)
