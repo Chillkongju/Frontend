@@ -68,11 +68,10 @@ class CreateActivity : ComponentActivity() {
                         onSpoilerChange = { includeSpoiler = it },
                         photos = photos,
                         onPhotosChange = {
-                            photos.clear()
-                            photos.addAll(it)
+                            photos.addAll(it.filterNot { uri -> photos.contains(uri) })
                         },
                         onRemovePhoto = { idx -> photos.removeAt(idx) },
-                        onBack = { finish() },
+                        onBack = { showDetail = false },
                         onSave = {
                             // 저장 완료 후 화면 종료
                             Toast.makeText(this, "기록이 저장되었습니다.", Toast.LENGTH_SHORT).show()
