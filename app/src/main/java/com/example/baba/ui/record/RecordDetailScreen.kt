@@ -82,6 +82,11 @@ fun RecordDetailScreen(
     var isLoadingRecommendations by remember { mutableStateOf(false) }
     var recommendationError by remember { mutableStateOf<String?>(null) }
 
+    // 더미 댓글 데이터 제거
+    // LaunchedEffect(Unit) {
+    //     comments.addAll(getDummyCommentsForRecord())
+    // }
+
     // 좋아요 상태 초기화
     LaunchedEffect(record.id) {
         coroutineScope.launch {
@@ -96,8 +101,30 @@ fun RecordDetailScreen(
                             isLiked = loveResponse.body() ?: false
                         }
                     }
+                } else {
+                    // API 실패 시 SessionManager의 username 사용
+                    val fallbackUsername = SessionManager.username
+                    if (fallbackUsername != null) {
+                        val loveResponse = RetrofitInstance.loveApi.checkLove(fallbackUsername, record.id)
+                        if (loveResponse.isSuccessful) {
+                            isLiked = loveResponse.body() ?: false
+                        }
+                    }
+                    Log.w("RecordDetail", "getMyInfo 실패, 대체 username 사용: $fallbackUsername")
                 }
             } catch (e: Exception) {
+                // 예외 발생 시에도 SessionManager의 username 사용
+                val fallbackUsername = SessionManager.username
+                if (fallbackUsername != null) {
+                    try {
+                        val loveResponse = RetrofitInstance.loveApi.checkLove(fallbackUsername, record.id)
+                        if (loveResponse.isSuccessful) {
+                            isLiked = loveResponse.body() ?: false
+                        }
+                    } catch (e2: Exception) {
+                        Log.e("RecordDetail", "대체 방법으로도 좋아요 상태 조회 실패: ${e2.message}")
+                    }
+                }
                 Log.e("RecordDetail", "좋아요 상태 조회 실패: ${e.message}")
             }
         }
@@ -109,23 +136,31 @@ fun RecordDetailScreen(
             coroutineScope.launch {
                 isLoadingLike = true
                 try {
+                    // 먼저 getMyInfo로 시도
                     val memberResponse = RetrofitInstance.memberApi.getMyInfo()
-                    if (memberResponse.isSuccessful) {
-                        val username = memberResponse.body()?.username
-                        if (username != null) {
-                            val response = RetrofitInstance.loveApi.toggleLove(username, record.id)
-                            if (response.isSuccessful) {
-                                val responseMessage = response.body()
-                                val newLikedState = responseMessage?.contains("등록") == true
+                    val username = if (memberResponse.isSuccessful) {
+                        memberResponse.body()?.username
+                    } else {
+                        // 실패 시 SessionManager의 username 사용
+                        SessionManager.username
+                    }
 
-                                isLiked = newLikedState
+                    if (username != null) {
+                        val response = RetrofitInstance.loveApi.toggleLove(username, record.id)
+                        if (response.isSuccessful) {
+                            val responseMessage = response.body()
+                            val newLikedState = responseMessage?.contains("등록") == true
 
-                                Log.d("RecordDetail", "좋아요 토글 성공: $responseMessage")
-                            } else {
-                                Toast.makeText(context, "좋아요 처리에 실패했습니다", Toast.LENGTH_SHORT).show()
-                                Log.e("RecordDetail", "좋아요 토글 실패: ${response.code()}")
-                            }
+                            isLiked = newLikedState
+
+                            Log.d("RecordDetail", "좋아요 토글 성공: $responseMessage")
+                        } else {
+                            Toast.makeText(context, "좋아요 처리에 실패했습니다", Toast.LENGTH_SHORT).show()
+                            Log.e("RecordDetail", "좋아요 토글 실패: ${response.code()}")
                         }
+                    } else {
+                        Toast.makeText(context, "사용자 정보를 찾을 수 없습니다", Toast.LENGTH_SHORT).show()
+                        Log.e("RecordDetail", "username을 가져올 수 없음")
                     }
                 } catch (e: Exception) {
                     Toast.makeText(context, "네트워크 오류가 발생했습니다", Toast.LENGTH_SHORT).show()
@@ -239,7 +274,7 @@ fun RecordDetailScreen(
                 .padding(start = 16.dp, end = 16.dp, top = 16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            // 상단 헤더
+            // 상단 헤더 (뒤로가기 버튼과 더보기 버튼)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -330,6 +365,7 @@ fun RecordDetailScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // 이미지와 텍스트 정보를 가로로 배치
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -388,6 +424,7 @@ fun RecordDetailScreen(
 
                     Spacer(modifier = Modifier.height(4.dp))
 
+                    // 날짜와 별점을 세로 선으로 구분
                     Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {

@@ -38,6 +38,7 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.baba.MainActivity
 import com.example.baba.R
 import com.example.baba.data.member.MemberInfoResponse
+import com.example.baba.data.network.PersistentSessionManager
 import com.example.baba.data.network.SessionManager
 import com.example.baba.data.record.WatchedDateManager
 import com.example.baba.ui.friends.FollowScreen
@@ -74,6 +75,26 @@ fun filterDiariesByTab(selectedTab: Int, diaries: List<DiaryResponse>): List<Dia
     }
 }
 
+// 대체 회원 정보 생성 함수
+private fun createFallbackMemberInfo(): MemberInfoResponse? {
+    val savedUserId = SessionManager.userId
+    val savedUserName = SessionManager.userName
+    val savedUsername = SessionManager.username
+
+    return if (savedUserId != null && savedUserName != null && savedUsername != null) {
+        MemberInfoResponse(
+            id = savedUserId,
+            username = savedUsername,
+            name = savedUserName,
+            profileImageUrl = null,
+            bio = "안녕하세요!",
+            preference = null,
+            link = null
+        )
+    } else {
+        null
+    }
+}
 
 //화면 출력
 @Composable
@@ -125,12 +146,26 @@ fun MyRecordMainContent(
     LaunchedEffect(Unit) {
         coroutineScope.launch {
             try {
+                Log.d("MyRecordScreen", "회원 정보 조회 시작")
                 val response = RetrofitInstance.memberApi.getMyInfo()
+                Log.d("MyRecordScreen", "회원 정보 응답: ${response.isSuccessful}, code: ${response.code()}")
+
                 if (response.isSuccessful) {
                     memberInfo = response.body()
+                    Log.d("MyRecordScreen", "회원 정보 로드 성공: ${memberInfo?.name}")
+                } else {
+                    Log.e("MyRecordScreen", "회원 정보 조회 실패: ${response.errorBody()?.string()}")
+
+                    // 실패 시 SessionManager에서 저장된 정보 사용
+                    memberInfo = createFallbackMemberInfo()
+                    Log.d("MyRecordScreen", "대체 회원 정보 사용: ${memberInfo?.name}")
                 }
             } catch (e: Exception) {
                 Log.e("MyRecordMainContent", "회원 정보 조회 실패: ${e.message}")
+
+                // 예외 발생 시에도 대체 정보 사용
+                memberInfo = createFallbackMemberInfo()
+                Log.d("MyRecordScreen", "예외 발생으로 대체 회원 정보 사용: ${memberInfo?.name}")
             } finally {
                 isLoading = false
             }
@@ -208,21 +243,18 @@ fun TopBar(name: String, onLogout: () -> Unit) {
                                     val response = RetrofitInstance.authApi.logout()
                                     withContext(Dispatchers.Main) {
                                         if (response.isSuccessful) {
-                                            // 세션 정보 클리어
-                                            SessionManager.userId = null
-                                            SessionManager.needsRefresh = false
-
+                                            PersistentSessionManager.clearSession()
                                             Toast.makeText(context, "로그아웃되었습니다.", Toast.LENGTH_SHORT).show()
-
-                                            // 콜백으로 로그아웃 처리
-                                            onLogout()  // ← Intent 대신 콜백 사용
+                                            onLogout()
                                         } else {
                                             Toast.makeText(context, "로그아웃 실패", Toast.LENGTH_SHORT).show()
                                         }
                                     }
                                 } catch (e: Exception) {
                                     withContext(Dispatchers.Main) {
-                                        Toast.makeText(context, "로그아웃 오류: ${e.message}", Toast.LENGTH_SHORT).show()
+                                        PersistentSessionManager.clearSession()
+                                        Toast.makeText(context, "로그아웃되었습니다.", Toast.LENGTH_SHORT).show()
+                                        onLogout()
                                     }
                                 }
                             }
