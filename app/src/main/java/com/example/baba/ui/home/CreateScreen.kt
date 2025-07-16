@@ -37,16 +37,16 @@ fun CreateScreen(
     selectedDate: LocalDate,
     title: String,
     rating: Double,
+    photo: Uri?,  // 단일 사진
     onBack: () -> Unit,
     onTitleChange: (String) -> Unit,
     onRatingChange: (Double) -> Unit,
+    onPhotoChange: (Uri?) -> Unit,  // 사진 변경 콜백
     onNext: () -> Unit
 ) {
-    // 이미지 첨부 상태만 로컬로 관리합니다
-    var imageUri by remember { mutableStateOf<Uri?>(null) }
     val pickImageLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
-    ) { uri -> uri?.let { imageUri = it } }
+    ) { uri -> onPhotoChange(uri) }
 
     // 별점용 상수
     val starCount     = 5
@@ -62,9 +62,9 @@ fun CreateScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            imageVector = Icons.Filled.ArrowBack,      // ← 여기를 ArrowBack 으로
+                            imageVector = Icons.Filled.ArrowBack,
                             contentDescription = "뒤로",
-                            modifier = Modifier.size(24.dp)            // 사이즈 지정은 Modifier 에서
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 },
@@ -95,7 +95,7 @@ fun CreateScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            // 날짜 표시 (원하시면 추가)
+            // 날짜 표시
             Text(
                 text = selectedDate.format(DateTimeFormatter.ofPattern("M월 d일", Locale.getDefault())),
                 fontSize = 14.sp,
@@ -122,9 +122,9 @@ fun CreateScreen(
                     shape = RoundedCornerShape(12.dp),
                     elevation = CardDefaults.cardElevation(4.dp)
                 ) {
-                    if (imageUri != null) {
+                    if (photo != null) {
                         AsyncImage(
-                            model = imageUri,
+                            model = photo,
                             contentDescription = "첨부된 이미지",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
@@ -208,17 +208,15 @@ fun CreateScreen(
 @Preview(showBackground = true)
 @Composable
 fun PreviewCreateScreen() {
-    // 예제용: 날짜, 람다만 더미로 전달
     CreateScreen(
         selectedDate   = LocalDate.now(),
         title          = "",
         rating         = 2.5,
+        photo          = null,
         onBack         = {},
         onTitleChange  = {},
         onRatingChange = {},
+        onPhotoChange  = {},
         onNext         = {}
     )
 }
-
-
-
