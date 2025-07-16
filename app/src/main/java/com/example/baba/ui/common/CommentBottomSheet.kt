@@ -1,5 +1,7 @@
 package com.example.baba.ui.common
 
+import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -33,7 +36,12 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.baba.R
+import com.example.baba.data.network.RetrofitInstance
+import com.example.baba.data.network.SessionManager
 import com.example.baba.ui.theme.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 // 댓글 데이터 모델
 data class Comment(
@@ -78,11 +86,12 @@ class MentionVisualTransformation : VisualTransformation {
 
 @Composable
 fun CommentBottomSheet(
+    diaryId: Long,
     comments: SnapshotStateList<Comment>,
     onDismiss: () -> Unit,
     onCommentAdded: (Comment) -> Unit = {},
-    onCommentDeleted: () -> Unit = {},
-    currentUserName: String = "6812", // 현재 사용자명
+    onCommentDeleted: (Comment) -> Unit = {},
+    currentUserName: String,
     currentUserProfileImage: Int = R.drawable.ic_default_profile
 ) {
     var commentText by remember { mutableStateOf(TextFieldValue("")) }
@@ -276,7 +285,7 @@ fun CommentBottomSheet(
                             },
                             onDeleteClick = { comment ->
                                 comments.removeIf { it.id == comment.id }
-                                onCommentDeleted()
+                                onCommentDeleted(comment)
                             }
                         )
                     }
@@ -354,6 +363,8 @@ fun CommentItem(
     onDeleteClick: (Comment) -> Unit = {}
 ) {
     var showDropdownMenu by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     Row(
         modifier = Modifier
@@ -364,6 +375,7 @@ fun CommentItem(
                 bottom = 8.dp
             )
     ) {
+        // 프로필 이미지
         Image(
             painter = painterResource(id = comment.userProfileImage),
             contentDescription = "프로필",
@@ -456,7 +468,50 @@ fun CommentItem(
                                 },
                                 onClick = {
                                     showDropdownMenu = false
-                                    onDeleteClick(comment)
+
+                                    // API 호출로 실제 댓글 삭제
+                                    coroutineScope.launch {
+                                        try {
+                                            val username = try {
+                                                val memberResponse = RetrofitInstance.memberApi.getMyInfo()
+                                                if (memberResponse.isSuccessful) {
+                                                    memberResponse.body()?.username
+                                                } else {
+                                                    SessionManager.username
+                                                }
+                                            } catch (e: Exception) {
+                                                SessionManager.username
+                                            }
+
+                                            if (username != null) {
+                                                Log.d("CommentItem", "댓글 삭제 시작 - commentId: ${comment.id}")
+                                                val response = RetrofitInstance.commentApi.deleteComment(
+                                                    username = username,
+                                                    commentId = comment.id.toLong()
+                                                )
+
+                                                if (response.isSuccessful) {
+                                                    Log.d("CommentItem", "댓글 삭제 성공")
+                                                    onDeleteClick(comment)
+                                                } else {
+                                                    Log.e("CommentItem", "댓글 삭제 실패: ${response.code()}")
+                                                    withContext(Dispatchers.Main) {
+                                                        Toast.makeText(context, "댓글 삭제에 실패했습니다", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                }
+                                            } else {
+                                                Log.e("CommentItem", "username을 가져올 수 없음")
+                                                withContext(Dispatchers.Main) {
+                                                    Toast.makeText(context, "사용자 정보를 찾을 수 없습니다", Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+                                        } catch (e: Exception) {
+                                            Log.e("CommentItem", "댓글 삭제 오류: ${e.message}")
+                                            withContext(Dispatchers.Main) {
+                                                Toast.makeText(context, "네트워크 오류가 발생했습니다", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    }
                                 },
                                 modifier = Modifier.height(32.dp),
                                 contentPadding = PaddingValues(0.dp)
