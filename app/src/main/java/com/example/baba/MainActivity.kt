@@ -1,6 +1,7 @@
 package com.example.baba
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,29 +29,49 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.baba.data.network.RetrofitInstance
+import com.example.baba.data.network.PersistentSessionManager
 import com.example.baba.data.network.SessionManager
 import com.example.baba.data.record.WatchedDateManager
 import com.example.baba.ui.profile.EditProfileScreen
 import com.example.baba.ui.record.RecordDetailScreen
 import com.example.baba.ui.record.Record
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // 초기화
         RetrofitInstance.init(applicationContext)
+        PersistentSessionManager.initialize(applicationContext)
+        WatchedDateManager.initialize(applicationContext)
 
         enableEdgeToEdge()
         setContent {
             var showSplash by remember { mutableStateOf(true) }
             var isSignUp by remember { mutableStateOf(false) }
-            var isLoggedIn by remember { mutableStateOf(SessionManager.userId != null) }
+            var isLoggedIn by remember { mutableStateOf(false) }
+            var isCheckingSession by remember { mutableStateOf(true) }
+
+            // 앱 시작 시 저장된 세션 확인
+            LaunchedEffect(Unit) {
+                // 스플래시 화면 시간
+                kotlinx.coroutines.delay(1500)
+                showSplash = false
+
+                // 저장된 로그인 상태 확인
+                val sessionExists = PersistentSessionManager.isLoggedIn()
+                isLoggedIn = sessionExists
+
+                // 디버깅 로그
+                Log.d("MainActivity", "세션 확인 결과: $sessionExists")
+                Log.d("MainActivity", "SessionManager - userId: ${SessionManager.userId}, userName: ${SessionManager.userName}, username: ${SessionManager.username}")
+
+                isCheckingSession = false
+            }
 
             when {
-                showSplash -> Splash {
-                    showSplash = false
+                showSplash || isCheckingSession -> {
+                    Splash { /* 스플래시 완료는 LaunchedEffect에서 처리 */ }
                 }
 
                 isSignUp -> SignupScreen(
@@ -69,7 +91,7 @@ class MainActivity : ComponentActivity() {
 
                 else -> MainScreen(
                     onLogout = {
-                        isLoggedIn = false  // ← 로그아웃 콜백
+                        isLoggedIn = false
                     }
                 )
             }
@@ -88,7 +110,6 @@ fun MainScreen(onLogout: () -> Unit) {
                 currentRoute = navController.currentDestination?.route ?: Screen.Home.route,
                 onItemClick = { route ->
                     navController.navigate(route) {
-                        // 백스택 정리
                         popUpTo(navController.graph.startDestinationId) {
                             saveState = true
                         }
@@ -111,7 +132,7 @@ fun MainScreen(onLogout: () -> Unit) {
             }
 
             composable(Screen.Record.route) {
-                RecordNavigation(onLogout = onLogout)  // ← 콜백 전달
+                RecordNavigation(onLogout = onLogout)
             }
 
             composable(Screen.Recommendation.route) {
@@ -140,7 +161,7 @@ fun RecordNavigation(onLogout: () -> Unit) {
         composable("recordList") {
             MyRecordScreen(
                 navController = recordNavController,
-                onLogout = onLogout  // ← 콜백 전달
+                onLogout = onLogout
             )
         }
 

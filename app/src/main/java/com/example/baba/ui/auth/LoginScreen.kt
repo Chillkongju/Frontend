@@ -18,6 +18,7 @@ import kotlinx.coroutines.*
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
 import com.example.baba.data.auth.LoginRequest
+import com.example.baba.data.network.PersistentSessionManager
 import com.example.baba.data.network.RetrofitInstance
 import com.example.baba.data.network.SessionManager
 
@@ -136,13 +137,14 @@ fun LoginScreen(
                                             else -> 1L  // 기본값
                                         }
 
-                                        // SessionManager에 사용자 정보 저장 (실제 name 사용)
-                                        SessionManager.setLoginInfo(
+                                        // PersistentSessionManager에 영구 저장
+                                        PersistentSessionManager.saveLoginInfo(
                                             userId = userId,
-                                            userName = memberInfo.name  // 실제 이름 사용
+                                            userName = memberInfo.name,
+                                            username = memberInfo.username
                                         )
 
-                                        Log.d("Login", "사용자 정보 저장완료 - userId: ${SessionManager.userId}, userName: ${SessionManager.userName}")
+                                        Log.d("Login", "로그인 정보 영구 저장완료 - userId: $userId, userName: ${memberInfo.name}, username: ${memberInfo.username}")
 
                                         withContext(Dispatchers.Main) {
                                             onLoginSuccess()
@@ -155,7 +157,12 @@ fun LoginScreen(
                                             "admin" -> 99L
                                             else -> 1L
                                         }
-                                        SessionManager.setLoginInfo(userId, id)  // username을 name으로 사용
+
+                                        PersistentSessionManager.saveLoginInfo(
+                                            userId = userId,
+                                            userName = id,  // username을 name으로 사용
+                                            username = id
+                                        )
 
                                         withContext(Dispatchers.Main) {
                                             onLoginSuccess()
@@ -170,7 +177,12 @@ fun LoginScreen(
                                         "admin" -> 99L
                                         else -> 1L
                                     }
-                                    SessionManager.setLoginInfo(userId, id)  // username을 name으로 사용
+
+                                    PersistentSessionManager.saveLoginInfo(
+                                        userId = userId,
+                                        userName = id,
+                                        username = id
+                                    )
 
                                     withContext(Dispatchers.Main) {
                                         onLoginSuccess()

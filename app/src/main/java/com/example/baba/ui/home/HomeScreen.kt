@@ -52,6 +52,27 @@ fun rememberBase64ImageBitmap(base64String: String?): ImageBitmap? {
     }
 }
 
+// 대체 회원 정보 생성 함수
+private fun createFallbackMemberInfo(): MemberInfoResponse? {
+    val savedUserId = SessionManager.userId
+    val savedUserName = SessionManager.userName
+    val savedUsername = SessionManager.username
+
+    return if (savedUserId != null && savedUserName != null && savedUsername != null) {
+        MemberInfoResponse(
+            id = savedUserId,
+            username = savedUsername,
+            name = savedUserName,
+            profileImageUrl = null,
+            bio = "안녕하세요!",
+            preference = null,
+            link = null
+        )
+    } else {
+        null
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
@@ -116,16 +137,30 @@ fun HomeScreen(navController: NavController? = null) {
         }
     }
 
-    // 회원 정보 불러오기 (한 번만)
+    // 회원 정보 불러오기
     LaunchedEffect(Unit) {
         if (memberInfo == null) {
             try {
+                Log.d("HomeScreen", "회원 정보 조회 시작")
                 val response = RetrofitInstance.memberApi.getMyInfo()
+                Log.d("HomeScreen", "회원 정보 응답: ${response.isSuccessful}, code: ${response.code()}")
+
                 if (response.isSuccessful) {
                     memberInfo = response.body()
+                    Log.d("HomeScreen", "회원 정보 로드 성공: ${memberInfo?.name}")
+                } else {
+                    Log.e("HomeScreen", "회원 정보 조회 실패: ${response.errorBody()?.string()}")
+
+                    // 실패 시 SessionManager에서 저장된 정보 사용
+                    memberInfo = createFallbackMemberInfo()
+                    Log.d("HomeScreen", "대체 회원 정보 사용: ${memberInfo?.name}")
                 }
             } catch (e: Exception) {
                 Log.e("HomeScreen", "회원 정보 조회 실패: ${e.message}")
+
+                // 예외 발생 시에도 대체 정보 사용
+                memberInfo = createFallbackMemberInfo()
+                Log.d("HomeScreen", "예외 발생으로 대체 회원 정보 사용: ${memberInfo?.name}")
             }
         }
     }
