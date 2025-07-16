@@ -3,6 +3,7 @@ package com.example.baba.data.network
 import android.content.Context
 import android.content.SharedPreferences
 import com.example.baba.data.auth.AuthApi
+import com.example.baba.data.comment.CommentApi
 import com.example.baba.data.friends.FriendsApi
 import com.example.baba.data.love.LoveApi
 import com.example.baba.data.member.MemberApi
@@ -55,4 +56,5 @@ object RetrofitInstance {
     val friendsApi: FriendsApi by lazy { retrofit.create(FriendsApi::class.java) }
     val recommendationApi: RecommendationApi by lazy { retrofit.create(RecommendationApi::class.java) }
     val loveApi: LoveApi by lazy { retrofit.create(LoveApi::class.java) }
+    val commentApi: CommentApi by lazy { retrofit.create(CommentApi::class.java) }
 }

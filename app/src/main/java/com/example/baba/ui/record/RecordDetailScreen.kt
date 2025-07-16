@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
+import com.example.baba.data.comment.CommentResponseDto
 import com.example.baba.data.network.RetrofitInstance
 import com.example.baba.data.network.SessionManager
 import com.example.baba.data.recommendation.RecommendationResponse
@@ -47,7 +48,10 @@ import com.example.baba.R
 import com.example.baba.ui.theme.CoolGray700
 import com.example.baba.ui.common.CommentBottomSheet
 import com.example.baba.ui.common.Comment
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.time.format.DateTimeFormatter
+import java.time.LocalDateTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,19 +77,82 @@ fun RecordDetailScreen(
 
     // 댓글 관리
     val comments = remember { mutableListOf<Comment>().toMutableStateList() }
+    var isLoadingComments by remember { mutableStateOf(false) }
 
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    // 댓글 목록 새로고침 함수
+    suspend fun refreshComments() {
+        try {
+            val refreshResponse = RetrofitInstance.commentApi.getComments(record.id)
+            if (refreshResponse.isSuccessful) {
+                val commentDtos = refreshResponse.body() ?: emptyList()
+                val uiComments = commentDtos.map { dto ->
+                    Comment(
+                        id = dto.id.toInt(),
+                        userName = dto.username,
+                        userProfileImage = R.drawable.ic_default_profile,
+                        content = dto.content,
+                        timeAgo = formatTimeAgo(dto.createdAt),
+                        isReply = false,
+                        parentCommentId = null,
+                        mentionedUser = null,
+                        isLiked = false,
+                        likeCount = 0
+                    )
+                }
+                comments.clear()
+                comments.addAll(uiComments)
+            }
+        } catch (e: Exception) {
+            Log.e("RecordDetail", "댓글 새로고침 실패: ${e.message}")
+        }
+    }
 
     // 추천 작품 관련 상태
     var recommendations by remember { mutableStateOf<List<RecommendationResponse>>(emptyList()) }
     var isLoadingRecommendations by remember { mutableStateOf(false) }
     var recommendationError by remember { mutableStateOf<String?>(null) }
 
-    // 더미 댓글 데이터 제거
-    // LaunchedEffect(Unit) {
-    //     comments.addAll(getDummyCommentsForRecord())
-    // }
+    // 댓글 목록 로드
+    LaunchedEffect(record.id) {
+        isLoadingComments = true
+        try {
+            Log.d("RecordDetail", "댓글 목록 조회 시작 - diaryId: ${record.id}")
+            val response = RetrofitInstance.commentApi.getComments(record.id)
+
+            if (response.isSuccessful) {
+                val commentDtos = response.body() ?: emptyList()
+                Log.d("RecordDetail", "댓글 조회 성공: ${commentDtos.size}개")
+
+                // 백엔드 DTO를 UI Comment 모델로 변환
+                val uiComments = commentDtos.map { dto ->
+                    Comment(
+                        id = dto.id.toInt(),
+                        userName = dto.username,
+                        userProfileImage = R.drawable.ic_default_profile,
+                        content = dto.content,
+                        timeAgo = formatTimeAgo(dto.createdAt),
+                        isReply = false, // 백엔드에서 답글 기능이 없으므로 false
+                        parentCommentId = null,
+                        mentionedUser = null,
+                        isLiked = false,
+                        likeCount = 0
+                    )
+                }
+
+                comments.clear()
+                comments.addAll(uiComments)
+            } else {
+                Log.e("RecordDetail", "댓글 조회 실패: ${response.code()}")
+            }
+        } catch (e: Exception) {
+            Log.e("RecordDetail", "댓글 조회 오류: ${e.message}")
+        } finally {
+            isLoadingComments = false
+        }
+    }
 
     // 좋아요 상태 초기화
     LaunchedEffect(record.id) {
@@ -587,21 +654,106 @@ fun RecordDetailScreen(
     }
 
     if (showCommentBottomSheet) {
-        val currentUserName = SessionManager.userName ?: "사용자"
+        val currentUserName = SessionManager.userName ?: SessionManager.username ?: "사용자"
         val currentUserProfileImage = R.drawable.ic_default_profile
 
         CommentBottomSheet(
+            diaryId = record.id,
             comments = comments,
             onDismiss = { showCommentBottomSheet = false },
             onCommentAdded = { comment ->
-                comments.add(comment)
+                // 실제 API 호출로 댓글 작성
+                coroutineScope.launch {
+                    try {
+                        // username 가져오기 (대체 방법 포함)
+                        val username = try {
+                            val memberResponse = RetrofitInstance.memberApi.getMyInfo()
+                            if (memberResponse.isSuccessful) {
+                                memberResponse.body()?.username
+                            } else {
+                                SessionManager.username
+                            }
+                        } catch (e: Exception) {
+                            SessionManager.username
+                        }
+
+                        if (username != null) {
+                            Log.d("RecordDetail", "댓글 작성 시작 - username: $username, content: ${comment.content}")
+                            val response = RetrofitInstance.commentApi.createComment(
+                                username = username,
+                                diaryId = record.id,
+                                content = comment.content
+                            )
+
+                            if (response.isSuccessful) {
+                                Log.d("RecordDetail", "댓글 작성 성공")
+                                // 댓글 목록 새로고침
+                                val refreshResponse = RetrofitInstance.commentApi.getComments(record.id)
+                                if (refreshResponse.isSuccessful) {
+                                    val commentDtos = refreshResponse.body() ?: emptyList()
+                                    val uiComments = commentDtos.map { dto ->
+                                        Comment(
+                                            id = dto.id.toInt(),
+                                            userName = dto.username,
+                                            userProfileImage = R.drawable.ic_default_profile,
+                                            content = dto.content,
+                                            timeAgo = formatTimeAgo(dto.createdAt),
+                                            isReply = false,
+                                            parentCommentId = null,
+                                            mentionedUser = null,
+                                            isLiked = false,
+                                            likeCount = 0
+                                        )
+                                    }
+                                    comments.clear()
+                                    comments.addAll(uiComments)
+                                }
+                            } else {
+                                Log.e("RecordDetail", "댓글 작성 실패: ${response.code()}")
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(context, "댓글 작성에 실패했습니다", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        } else {
+                            Log.e("RecordDetail", "username을 가져올 수 없음")
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(context, "사용자 정보를 찾을 수 없습니다", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e("RecordDetail", "댓글 작성 오류: ${e.message}")
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(context, "네트워크 오류가 발생했습니다", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
             },
             onCommentDeleted = {
-                // 댓글 삭제 처리
+                coroutineScope.launch {
+                    refreshComments()
+                }
             },
             currentUserName = currentUserName,
             currentUserProfileImage = currentUserProfileImage
         )
+    }
+}
+
+// 시간 포맷팅 함수
+fun formatTimeAgo(createdAt: String): String {
+    return try {
+        val dateTime = LocalDateTime.parse(createdAt.replace(" ", "T"))
+        val now = LocalDateTime.now()
+        val minutes = java.time.Duration.between(dateTime, now).toMinutes()
+
+        when {
+            minutes < 1 -> "방금 전"
+            minutes < 60 -> "${minutes}분 전"
+            minutes < 1440 -> "${minutes / 60}시간 전"
+            else -> "${minutes / 1440}일 전"
+        }
+    } catch (e: Exception) {
+        "방금 전"
     }
 }
 
