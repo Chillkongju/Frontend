@@ -1,5 +1,9 @@
 package com.example.baba.ui.record
 
+import android.graphics.BitmapFactory
+import android.util.Base64
+import android.util.Log
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -13,16 +17,28 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.baba.data.network.RetrofitInstance
+import com.example.baba.data.record.DiaryResponse
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
+import com.example.baba.R
+import com.example.baba.data.record.WatchedDateManager
 import com.example.baba.ui.friends.FollowScreen
-import androidx.compose.foundation.layout.Spacer as Spacer1
+import java.time.format.DateTimeFormatter
 
 //화면 출력
 @Composable
-fun MyRecordScreen() {
+fun MyRecordScreen(navController: NavController) {
     var showRecordList by remember { mutableStateOf(false) }
     var showFollowScreen by remember { mutableStateOf(false) }
     var selectedCategory by remember { mutableStateOf("전체") }
@@ -37,7 +53,7 @@ fun MyRecordScreen() {
         }
 
         showRecordList -> {
-            MyRecordListScreen(category = selectedCategory)
+            MyRecordListScreen(category = selectedCategory, navController = navController)
         }
 
         else -> {
@@ -46,7 +62,8 @@ fun MyRecordScreen() {
                     selectedCategory = category
                     showRecordList = true
                 },
-                onFollowerClick = { showFollowScreen = true }
+                onFollowerClick = { showFollowScreen = true },
+                navController = navController
             )
         }
     }
@@ -55,8 +72,11 @@ fun MyRecordScreen() {
 @Composable
 fun MyRecordMainContent(
     onCategoryClick: (String) -> Unit,
-    onFollowerClick: () -> Unit
+    onFollowerClick: () -> Unit,
+    navController: NavController
 ) {
+    var categoryCounts by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
+
     Scaffold(
         topBar = { TopBar() }
     ) { innerPadding ->
@@ -68,12 +88,18 @@ fun MyRecordMainContent(
         ) {
             item { ProfileCard(onFollowerClick) }
             item { TimeFilterTabs() }
-            item { CategoryTabs(onCategoryClick) } // 클릭 콜백 전달
-            item { RecordList() }
+            item {
+                CategoryTabs(onCategoryClick, categoryCounts)
+            }
+            item {
+                RecordList(
+                    onCountReady = { counts -> categoryCounts = counts },
+                    navController = navController
+                )
+            }
         }
     }
 }
-
 
 // 1. 탑 바 구현
 @Composable
@@ -88,7 +114,7 @@ fun TopBar() {
         Text("칠공주's", fontSize = 20.sp, fontWeight = FontWeight.Bold)
         Row {
             Icon(Icons.Default.Search, contentDescription = "Search")
-            Spacer1(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(16.dp))
             Icon(Icons.Default.Settings, contentDescription = "Settings")
         }
     }
@@ -122,7 +148,7 @@ fun ProfileCard(onFollowerClick: () -> Unit) {
                         .testTag("profile_image")
                 )
 
-                Spacer1(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
                     text = "칠공주",
@@ -130,14 +156,14 @@ fun ProfileCard(onFollowerClick: () -> Unit) {
                     fontSize = 16.sp,
                     modifier = Modifier.testTag("name")
                 )
-                Spacer1(modifier = Modifier.height(2.dp))
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = "안녕하세요 칠공주의 공간입니다.",
                     fontSize = 13.sp,
                     modifier = Modifier.testTag("coment")
                 )
 
-                Spacer1(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Button(
                     onClick = onFollowerClick,
@@ -235,14 +261,16 @@ fun TimeFilterTabs() {
         }
     }
 
-    Spacer1(modifier = Modifier.height(8.dp)) // 하단 여백
+    Spacer(modifier = Modifier.height(8.dp)) // 하단 여백
 }
 
 // 4. 기록 분류
 @Composable
-fun CategoryTabs(onCategoryClick: (String) -> Unit) {
+fun CategoryTabs(
+    onCategoryClick: (String) -> Unit,
+    categoryCounts: Map<String, Int> = mapOf("전체" to 0, "도서" to 0, "영화" to 0, "공연" to 0)
+) {
     val categoryName = listOf("전체", "도서", "영화", "공연")
-    val categoryNum = listOf("6", "1", "3", "2")
     var selected by remember { mutableStateOf(0) }
 
     Row(
@@ -252,6 +280,7 @@ fun CategoryTabs(onCategoryClick: (String) -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         categoryName.forEachIndexed { i, name ->
+            val count = categoryCounts[name] ?: 0
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -259,13 +288,13 @@ fun CategoryTabs(onCategoryClick: (String) -> Unit) {
                     .background(Color.LightGray)
                     .clickable {
                         selected = i
-                        onCategoryClick(name) // ✅ 여기서 호출
+                        onCategoryClick(name)
                     }
                     .padding(vertical = 12.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "$name ${categoryNum[i]}",
+                    text = "$name $count",
                     color = Color.Black,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium
@@ -277,79 +306,189 @@ fun CategoryTabs(onCategoryClick: (String) -> Unit) {
 
 // 5. 기록 리스트
 @Composable
-fun RecordList() {
+fun RecordList(
+    onCountReady: (Map<String, Int>) -> Unit = {},
+    navController: NavController
+) {
+
+    var diaries by remember { mutableStateOf<List<DiaryResponse>>(emptyList()) }
+
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        try {
+            val userId = 1L
+            val response = RetrofitInstance.diaryApi.getAllMyDiaries(userId)
+            if (response.isSuccessful) {
+                val data = response.body() ?: emptyList()
+                diaries = data
+
+                // 카테고리별 개수 계산
+                val counts = mapOf(
+                    "전체" to data.size,
+                    "도서" to data.count { it.category == "BOOK" },
+                    "영화" to data.count { it.category == "MOVIE" },
+                    "공연" to data.count { it.category == "PERFORMANCE" },
+                )
+                onCountReady(counts)
+            }
+        } catch (e: Exception) {
+            Log.e("RecordList", "일기 불러오기 실패: ${e.message}")
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .padding(top = 4.dp)
     ) {
+        Text("기록", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.Black)
 
-        Text(
-            text = "기록",
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.Black
-        )
-
-        // 🔄 Card → Button 으로 변경
-        Button(
-            onClick = { /* TODO: 기록 상세 보기 등 */ },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFFF5F5F5), // 카드처럼 연한 회색 배경
-                contentColor = Color.Black
-            ),
-            contentPadding = PaddingValues(16.dp),
-            shape = RoundedCornerShape(8.dp),
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .background(Color.LightGray)
-                ) {
-                    Icon(
-                        Icons.Default.DateRange,
-                        contentDescription = null,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-
-                Spacer1(modifier = Modifier.width(12.dp))
-
-                Column {
-                    Text("하데스타운", fontWeight = FontWeight.Bold)
-                    Text("공연", fontSize = 12.sp, color = Color.Gray)
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Done,
-                            contentDescription = null,
-                            tint = Color(0xFF1E88E5),
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Text("4.5", fontSize = 12.sp)
-                        Spacer1(modifier = Modifier.width(8.dp))
-                        Text("2025.07.09.", fontSize = 12.sp)
-                    }
-
-                    Text("추천해요", fontSize = 12.sp)
-                }
-            }
+        diaries.forEach { diary ->
+            DiaryCard(diary, navController)
+            Spacer(modifier = Modifier.height(12.dp))
         }
-
-        Spacer1(modifier = Modifier.height(16.dp)) // 여유 여백
     }
 }
 
+// Base64 문자열을 ImageBitmap으로 변환하는 함수
+@Composable
+fun rememberBase64ImageBitmap(base64String: String?): androidx.compose.ui.graphics.ImageBitmap? {
+    return remember(base64String) {
+        try {
+            if (base64String.isNullOrEmpty()) return@remember null
+            val imageBytes = Base64.decode(base64String, Base64.DEFAULT)
+            val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+            bitmap?.asImageBitmap()
+        } catch (e: Exception) {
+            Log.e("Base64Image", "이미지 변환 실패: ${e.message}")
+            null
+        }
+    }
+}
 
-//@Preview(showBackground = true, name = "MyRecord Preview")
+@Composable
+fun DiaryCard(diary: DiaryResponse, navController: NavController) {
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        WatchedDateManager.initialize(context)
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(100.dp)
+            .clickable {
+                val record = Record(
+                    id = diary.id,
+                    title = diary.title,
+                    date = diary.createdDate.split(" ")[0],
+                    category = diary.categoryLabel,
+                    rating = diary.rating.toFloat(),
+                    content = diary.content,
+                    isPublic = false,
+                    photoUri = null
+                )
+
+                navController.currentBackStackEntry?.savedStateHandle?.set("record", record)
+
+                navController.navigate("recordDetail")
+            },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(12.dp)
+                .fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Base64 이미지 처리
+            val imageBitmap = rememberBase64ImageBitmap(diary.image)
+
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.LightGray)
+            ) {
+                if (imageBitmap != null) {
+                    Image(
+                        bitmap = imageBitmap,
+                        contentDescription = "썸네일",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    // 이미지가 없을 때 플레이스홀더
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.LightGray),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            painter = painterResource(
+                                id = when (diary.category) {
+                                    "BOOK" -> R.drawable.recommend_book
+                                    "MOVIE" -> R.drawable.recommend_movie
+                                    "PERFORMANCE" -> R.drawable.recommend_show
+                                    else -> R.drawable.ic_add
+                                }
+                            ),
+                            contentDescription = "카테고리 아이콘",
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // 텍스트 정보
+            Column(
+                verticalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxHeight()
+            ) {
+                Text(
+                    text = diary.title,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    maxLines = 1
+                )
+                Text(
+                    text = diary.categoryLabel,
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
+
+                val watchedDate = WatchedDateManager.getWatchedDate(diary.id)
+                    ?.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                    ?: diary.createdDate.split(" ")[0]
+
+                Text(
+                    text = watchedDate,
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
+
+                Text(
+                    text = diary.content,
+                    fontSize = 12.sp,
+                    color = Color.DarkGray,
+                    maxLines = 1
+                )
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
 @Composable
 fun MyRecordScreenPreview() {
-    MyRecordScreen()
+    val fakeNavController = rememberNavController()
+    MyRecordScreen(navController = fakeNavController)
 }

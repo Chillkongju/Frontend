@@ -1,5 +1,7 @@
 package com.example.baba.ui.record
 
+import android.graphics.BitmapFactory
+import android.util.Base64
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -7,11 +9,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,29 +20,65 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
+import java.time.LocalDate
 import com.example.baba.R
+import com.example.baba.data.network.RetrofitInstance
+import com.example.baba.data.record.WatchedDateManager
+import com.example.baba.ui.theme.CoolGray500
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MyRecordListScreen(category: String) {
+fun MyRecordListScreen(category: String, navController: NavController) {
     val categoryName = listOf("전체", "도서", "영화", "공연")
     val initialIndex = categoryName.indexOf(category).takeIf { it >= 0 } ?: 0
     var selected by rememberSaveable { mutableStateOf(initialIndex) }
     var isGridView by rememberSaveable { mutableStateOf(false) }
 
-    val records = listOf(
-        RecordData("하데스타운", "공연", "4.5", "2025.07.09.", "추천해요", R.drawable.ic_launcher_background),
-        RecordData("모순", "도서", "5.0", "2025.06.29.", "꼭 읽어야 할책", R.drawable.ic_nav_record),
-        RecordData("쥬라기 월드: 새로운 시작", "공연", "3.0", "2025.07.09.", "", R.drawable.recommend_book),
-        RecordData("8월의 크리스마스", "영화", "4.0", "2025.07.05.", "", R.drawable.recommend_show),
-        RecordData("디어 에반 핸슨", "영화", "4.7", "2025.07.01.", "", R.drawable.ic_nav_friend),
-        RecordData("이웃집 토토로", "영화", "4.8", "2025.06.25.", "", R.drawable.main_logo),
-    )
+    var records by remember { mutableStateOf<List<RecordData>>(emptyList()) }
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        WatchedDateManager.initialize(context)
+        try {
+            val response = RetrofitInstance.diaryApi.getAllMyDiaries(userId = 1L) // 사용자 ID는 필요 시 변경
+            if (response.isSuccessful) {
+                val diaries = response.body() ?: emptyList()
+                records = diaries.map {
+                    RecordData(
+                        id = it.id,
+                        title = it.title,
+                        category = when (it.category) {
+                            "BOOK" -> "도서"
+                            "MOVIE" -> "영화"
+                            "PERFORMANCE" -> "공연"
+                            else -> "기타"
+                        },
+                        rating = it.rating.toString(),
+                        date = WatchedDateManager.getWatchedDate(it.id)
+                            ?.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                            ?: it.createdDate.split(" ")[0],
+                        comment = it.content,
+                        image = it.image
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
 
     val filteredRecords = if (selected == 0) records else records.filter { it.category == categoryName[selected] }
 
@@ -106,7 +142,7 @@ fun MyRecordListScreen(category: String) {
             Spacer(modifier = Modifier.height(16.dp))
 
             if (isGridView) {
-                // 🔲 Grid View
+                // Grid View
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(3),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -115,18 +151,32 @@ fun MyRecordListScreen(category: String) {
                 ) {
                     items(filteredRecords.size) { index ->
                         val record = filteredRecords[index]
-                        Image(
-                            painter = painterResource(id = record.imageRes),
-                            contentDescription = record.title,
+                        GridImageItem(
+                            imageBase64 = record.image,
+                            title = record.title,
+                            category = record.category,  // 카테고리 전달
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .aspectRatio(0.7f)
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(8.dp)),
+                            onClick = {
+                                navController.currentBackStackEntry?.savedStateHandle?.set("record", Record(
+                                    id = record.id,
+                                    title = record.title,
+                                    date = record.date,
+                                    category = record.category,
+                                    rating = record.rating.toFloat(),
+                                    content = record.comment,
+                                    isPublic = false,
+                                    photoUri = null
+                                ))
+                                navController.navigate("recordDetail")
+                            }
                         )
                     }
                 }
             } else {
-                // 📃 List View
+                // List View
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier.fillMaxSize()
@@ -134,12 +184,26 @@ fun MyRecordListScreen(category: String) {
                     items(filteredRecords.size) { index ->
                         val record = filteredRecords[index]
                         RecordItem(
+                            id = record.id,
                             title = record.title,
                             category = record.category,
                             rating = record.rating,
                             date = record.date,
                             comment = record.comment,
-                            imageRes = record.imageRes
+                            imageBase64 = record.image,
+                            onClick = {
+                                navController.currentBackStackEntry?.savedStateHandle?.set("record", Record(
+                                    id = record.id,
+                                    title = record.title,
+                                    date = record.date,
+                                    category = record.category,
+                                    rating = record.rating.toFloat(),
+                                    content = record.comment,
+                                    isPublic = false,
+                                    photoUri = null
+                                ))
+                                navController.navigate("recordDetail")
+                            }
                         )
                     }
                 }
@@ -148,37 +212,151 @@ fun MyRecordListScreen(category: String) {
     }
 }
 
+@Composable
+fun rememberBase64Image(base64String: String?): androidx.compose.ui.graphics.ImageBitmap? {
+    return remember(base64String) {
+        try {
+            if (base64String.isNullOrEmpty()) return@remember null
+            val imageBytes = Base64.decode(base64String, Base64.DEFAULT)
+            val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+            bitmap?.asImageBitmap()
+        } catch (e: Exception) {
+            null
+        }
+    }
+}
+
+// Grid View용 이미지 아이템
+@Composable
+fun GridImageItem(
+    imageBase64: String?,
+    title: String,
+    category: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val imageBitmap = rememberBase64Image(imageBase64)
+
+    Box(
+        modifier = modifier
+            .size(72.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color.LightGray)
+            .clickable { onClick() }
+    ) {
+        if (imageBitmap != null) {
+            // 이미지가 있을 때는 이미지만 표시
+            Image(
+                bitmap = imageBitmap,
+                contentDescription = "Thumbnail",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            // 카테고리 아이콘
+            Image(
+                painter = painterResource(
+                    id = when (category) {
+                        "도서" -> R.drawable.recommend_book
+                        "영화" -> R.drawable.recommend_movie
+                        "공연" -> R.drawable.recommend_show
+                        else -> R.drawable.ic_add
+                    }
+                ),
+                contentDescription = "카테고리 아이콘",
+                modifier = Modifier
+                    .size(45.dp)
+                    .align(Alignment.Center)
+            )
+
+            // 제목
+            Text(
+                text = title,
+                color = CoolGray500,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .offset(y = (-16).dp)
+                    .padding(horizontal = 4.dp)
+            )
+        }
+    }
+}
+
 data class RecordData(
+    val id: Long,
     val title: String,
     val category: String,
     val rating: String,
     val date: String,
     val comment: String,
-    val imageRes: Int
+    val image: String?
 )
 
 @Composable
 fun RecordItem(
+    id: Long,
     title: String,
     category: String,
     rating: String,
     date: String,
     comment: String,
-    imageRes: Int
+    imageBase64: String?,
+    onClick: () -> Unit
 ) {
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        WatchedDateManager.initialize(context)
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { }
+            .clickable { onClick() }
     ) {
-        Image(
-            painter = painterResource(id = imageRes),
-            contentDescription = "Thumbnail",
+        val imageBitmap = rememberBase64Image(imageBase64)
+
+        Box(
             modifier = Modifier
                 .size(72.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(Color.LightGray)
-        )
+        ) {
+            if (imageBitmap != null) {
+                Image(
+                    bitmap = imageBitmap,
+                    contentDescription = "Thumbnail",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.LightGray),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = painterResource(
+                            id = when (category) {
+                                "도서" -> R.drawable.recommend_book
+                                "영화" -> R.drawable.recommend_movie
+                                "공연" -> R.drawable.recommend_show
+                                else -> R.drawable.ic_add
+                            }
+                        ),
+                        contentDescription = "카테고리 아이콘",
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.width(12.dp))
 
@@ -200,7 +378,13 @@ fun RecordItem(
                 )
                 Text(text = rating, fontSize = 12.sp)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(text = date, fontSize = 12.sp)
+
+                val watchedDate = WatchedDateManager.getWatchedDate(id)
+                    ?.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                    ?: date
+
+                Text(text = watchedDate, fontSize = 12.sp)
+
             }
 
             if (comment.isNotBlank()) {
@@ -208,10 +392,4 @@ fun RecordItem(
             }
         }
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun MyRecordListPreview() {
-    MyRecordListScreen(category = "전체")
 }

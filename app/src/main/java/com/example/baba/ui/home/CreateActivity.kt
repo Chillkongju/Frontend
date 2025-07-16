@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.*
 import androidx.core.view.WindowCompat
 import com.example.baba.data.network.SessionManager.userId
+import com.example.baba.data.record.WatchedDateManager
 import com.example.baba.ui.theme.BABATheme
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -15,6 +16,9 @@ import java.time.format.DateTimeFormatter
 class CreateActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        WatchedDateManager.initialize(this)
+
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         val initialCategory = intent.getStringExtra("category") ?: "PERFORMANCE"
@@ -26,12 +30,12 @@ class CreateActivity : ComponentActivity() {
             BABATheme {
                 var showDetail by remember { mutableStateOf(false) }
                 var title by remember { mutableStateOf("") }
-                var rating by remember { mutableStateOf(0f) }
+                var rating by remember { mutableStateOf(0.0) }
                 var review by remember { mutableStateOf("") }
                 var location by remember { mutableStateOf("") }
                 var isPublic by remember { mutableStateOf(true) }
                 var includeSpoiler by remember { mutableStateOf(false) }
-                val photos = remember { mutableStateListOf<Uri>() }
+                var photo by remember { mutableStateOf<Uri?>(null) }  // 단일 사진
 
                 // userId null 체크
                 val currentUserId = userId
@@ -46,9 +50,11 @@ class CreateActivity : ComponentActivity() {
                         selectedDate = initialDate,
                         title = title,
                         rating = rating,
+                        photo = photo,  // 사진 전달
                         onBack = { finish() },
                         onTitleChange = { title = it },
                         onRatingChange = { rating = it },
+                        onPhotoChange = { photo = it },  // 사진 변경 콜백
                         onNext = { showDetail = true }
                     )
                 } else {
@@ -66,13 +72,10 @@ class CreateActivity : ComponentActivity() {
                         onPublicChange = { isPublic = it },
                         includeSpoiler = includeSpoiler,
                         onSpoilerChange = { includeSpoiler = it },
-                        photos = photos,
-                        onPhotosChange = {
-                            photos.clear()
-                            photos.addAll(it)
-                        },
-                        onRemovePhoto = { idx -> photos.removeAt(idx) },
-                        onBack = { finish() },
+
+                        photo = photo,  // 단일 사진 전달
+                        onPhotoChange = { photo = it },  // 사진 변경 콜백
+                        onBack = { showDetail = false },
                         onSave = {
                             // 저장 완료 후 화면 종료
                             Toast.makeText(this, "기록이 저장되었습니다.", Toast.LENGTH_SHORT).show()
