@@ -1,0 +1,100 @@
+package com.example.baba.ui.friends
+
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.*
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.baba.R
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FollowScreen(
+    currentRoute: String,
+    onNavigate: (String) -> Unit,
+    onBackClick: () -> Unit
+) {
+    var selectedTabIndex by remember { mutableStateOf(0) }
+    val tabTitles = listOf("팔로잉 1", "팔로워 1")
+
+    Scaffold(
+        topBar = {
+            SmallTopAppBar(
+                title = {
+                    Text(
+                        text = if (selectedTabIndex == 0) "팔로잉 리스트 조회" else "팔로워 리스트 조회",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "뒤로가기")
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Column(modifier = Modifier.padding(innerPadding)) {
+            TabRow(selectedTabIndex = selectedTabIndex) {
+                tabTitles.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onClick = { selectedTabIndex = index },
+                        text = {
+                            Text(
+                                text = title,
+                                fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    )
+                }
+            }
+
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                items(1) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_default_profile),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(40.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text("hihihi", fontWeight = FontWeight.Medium)
+                            Text("한땡", fontSize = 12.sp, color = Color.Gray)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun FollowScreenPreview() {
+    MaterialTheme {
+        FollowScreen(
+            currentRoute = "friends",   // 현재 선택된 하단 탭
+            onNavigate = {},
+            onBackClick = {}
+        )
+    }
+}
+

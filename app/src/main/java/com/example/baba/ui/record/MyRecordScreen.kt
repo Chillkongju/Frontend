@@ -15,34 +15,47 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavHost
-import androidx.navigation.compose.rememberNavController
+import com.example.baba.ui.friends.FollowScreen
 import androidx.compose.foundation.layout.Spacer as Spacer1
 
 //화면 출력
 @Composable
 fun MyRecordScreen() {
     var showRecordList by remember { mutableStateOf(false) }
+    var showFollowScreen by remember { mutableStateOf(false) }
     var selectedCategory by remember { mutableStateOf("전체") }
 
-    if (showRecordList) {
-        MyRecordListScreen(category = selectedCategory)
-    } else {
-        MyRecordMainContent(
-            onCategoryClick = { category ->
-                selectedCategory = category
-                showRecordList = true
-            }
-        )
+    when {
+        showFollowScreen -> {
+            FollowScreen(
+                currentRoute = "friends",
+                onNavigate = { /* TODO: 바텀 네비 전환 로직 */ },
+                onBackClick = { showFollowScreen = false } // ← 뒤로가기 시 이전 화면
+            )
+        }
+
+        showRecordList -> {
+            MyRecordListScreen(category = selectedCategory)
+        }
+
+        else -> {
+            MyRecordMainContent(
+                onCategoryClick = { category ->
+                    selectedCategory = category
+                    showRecordList = true
+                },
+                onFollowerClick = { showFollowScreen = true }
+            )
+        }
     }
 }
 
 @Composable
 fun MyRecordMainContent(
-    onCategoryClick: (String) -> Unit
+    onCategoryClick: (String) -> Unit,
+    onFollowerClick: () -> Unit
 ) {
     Scaffold(
         topBar = { TopBar() }
@@ -53,11 +66,9 @@ fun MyRecordMainContent(
                 .padding(innerPadding)
                 .padding(bottom = 56.dp)
         ) {
-            item { ProfileCard() }
+            item { ProfileCard(onFollowerClick) }
             item { TimeFilterTabs() }
-            item {
-                CategoryTabs(onCategoryClick) // 클릭 콜백 전달
-            }
+            item { CategoryTabs(onCategoryClick) } // 클릭 콜백 전달
             item { RecordList() }
         }
     }
@@ -85,7 +96,7 @@ fun TopBar() {
 
 // 2. 프로필 카드 구현
 @Composable
-fun ProfileCard() {
+fun ProfileCard(onFollowerClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -129,7 +140,7 @@ fun ProfileCard() {
                 Spacer1(modifier = Modifier.height(12.dp))
 
                 Button(
-                    onClick = { /* TODO */ },
+                    onClick = onFollowerClick,
                     shape = RoundedCornerShape(20.dp),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF1F1F1))
