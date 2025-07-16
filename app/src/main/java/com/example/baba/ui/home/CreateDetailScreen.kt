@@ -1,6 +1,9 @@
 package com.example.baba.ui.home
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
+import android.util.Base64
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -9,8 +12,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
@@ -34,6 +35,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import java.io.ByteArrayOutputStream
+import java.io.File
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -54,20 +60,32 @@ fun CreateDetailScreen(
     onPublicChange: (Boolean) -> Unit,
     includeSpoiler: Boolean,
     onSpoilerChange: (Boolean) -> Unit,
-    photos: List<Uri>,
-    onPhotosChange: (List<Uri>) -> Unit,  // 새로운 사진 리스트 반영용 콜백
-    onRemovePhoto: (Int) -> Unit,
+    photo: Uri?,  // 단일 사진
+    onPhotoChange: (Uri?) -> Unit,  // 사진 변경 콜백
     onBack: () -> Unit,
     onSave: () -> Unit
 ) {
     val context = LocalContext.current
 
-    // 갤러리 런처
+    // 갤러리 런처 (단일 이미지)
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
-        uri?.let {
-            onPhotosChange(photos + it) // 새 Uri 추가
+        onPhotoChange(uri)
+    }
+
+    fun uriToMultipart(uri: Uri): MultipartBody.Part? {
+        return try {
+            val inputStream = context.contentResolver.openInputStream(uri)
+            val tempFile = File.createTempFile("upload", ".jpg", context.cacheDir)
+            tempFile.outputStream().use { output ->
+                inputStream?.copyTo(output)
+            }
+            val requestFile = tempFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
+            MultipartBody.Part.createFormData("imageFile", tempFile.name, requestFile)
+        } catch (e: Exception) {
+            Log.e("CreateDetail", "이미지 Multipart 변환 실패: ${e.message}")
+            null
         }
     }
 
@@ -83,30 +101,34 @@ fun CreateDetailScreen(
                 actions = {
                     TextButton(
                         onClick = {
-                            val request = DiaryCreateRequest(
-                                title = title,
-                                content = review,
-                                category = category,
-                                rating = rating.toInt(),
-                                watchedAt = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
-                            )
                             CoroutineScope(Dispatchers.IO).launch {
                                 try {
+                                    val imagePart = photo?.let { uriToMultipart(it) }
+
                                     val response = RetrofitInstance.diaryApi.createDiary(
                                         userId = userId,
-                                        diaryCreateRequest = request
+                                        title = title,
+                                        content = review,
+                                        category = category,
+                                        rating = rating.toDouble(),
+                                        watchedAt = date.format(DateTimeFormatter.ISO_LOCAL_DATE),
+                                        imageFile = imagePart
                                     )
+
+
                                     withContext(Dispatchers.Main) {
                                         if (response.isSuccessful) {
                                             Toast.makeText(context, "기록 저장 성공", Toast.LENGTH_SHORT).show()
                                             onSave()
                                         } else {
                                             Toast.makeText(context, "저장 실패: ${response.code()}", Toast.LENGTH_SHORT).show()
+                                            Log.e("CreateDetail", "Error: ${response.errorBody()?.string()}")
                                         }
                                     }
                                 } catch (e: Exception) {
                                     withContext(Dispatchers.Main) {
                                         Toast.makeText(context, "에러: ${e.message}", Toast.LENGTH_SHORT).show()
+                                        Log.e("CreateDetail", "Exception: ${e.message}", e)
                                     }
                                 }
                             }
@@ -166,7 +188,7 @@ fun CreateDetailScreen(
             TextField(
                 value = review,
                 onValueChange = onReviewChange,
-                placeholder = { Text("‘$title’에 대해 어떻게 생각하시나요?") },
+                placeholder = { Text("'$title'에 대해 어떻게 생각하시나요?") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(120.dp)
@@ -196,21 +218,22 @@ fun CreateDetailScreen(
                 }
             }
 
-            // 사진
+            // 사진 (단일)
             Text(text = "사진", fontSize = 16.sp, fontWeight = FontWeight.Medium)
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .size(80.dp)
-                            .background(Color.LightGray)
-                            .clickable { imagePickerLauncher.launch("image/*") },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Filled.Add, contentDescription = "사진 추가")
-                    }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // 사진 추가 버튼
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .background(Color.LightGray)
+                        .clickable { imagePickerLauncher.launch("image/*") },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = "사진 추가")
                 }
-                itemsIndexed(photos) { idx, uri ->
+
+                // 선택된 사진 표시
+                photo?.let { uri ->
                     Box(modifier = Modifier.size(80.dp)) {
                         Image(
                             painter = rememberAsyncImagePainter(uri),
@@ -220,18 +243,36 @@ fun CreateDetailScreen(
                                 .padding(4.dp)
                         )
                         IconButton(
-                            onClick = {
-                                onPhotosChange(photos.toMutableList().apply { removeAt(idx) })
-                            },
+                            onClick = { onPhotoChange(null) },
                             modifier = Modifier.align(Alignment.TopEnd)
                         ) {
-                            Icon(Icons.Filled.Close, contentDescription = "삭제")
+                            Icon(Icons.Filled.Close, contentDescription = "삭제", tint = Color.Red)
                         }
                     }
                 }
             }
         }
     }
+}
+
+// 이미지 크기 조정 함수 (용량 최적화)
+fun resizeBitmap(bitmap: Bitmap, maxWidth: Int = 400, maxHeight: Int = 300): Bitmap {
+    val width = bitmap.width
+    val height = bitmap.height
+
+    val ratioBitmap = width.toFloat() / height.toFloat()
+    val ratioMax = maxWidth.toFloat() / maxHeight.toFloat()
+
+    var finalWidth = maxWidth
+    var finalHeight = maxHeight
+
+    if (ratioMax > ratioBitmap) {
+        finalWidth = (maxHeight.toFloat() * ratioBitmap).toInt()
+    } else {
+        finalHeight = (maxWidth.toFloat() / ratioBitmap).toInt()
+    }
+
+    return Bitmap.createScaledBitmap(bitmap, finalWidth, finalHeight, true)
 }
 
 fun getCategoryLabel(code: String): String {
