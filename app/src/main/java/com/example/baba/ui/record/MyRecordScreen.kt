@@ -28,14 +28,17 @@ import com.example.baba.data.record.DiaryResponse
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.example.baba.R
 import com.example.baba.data.record.WatchedDateManager
+import com.example.baba.ui.friends.FollowScreen
 import java.time.format.DateTimeFormatter
 
 //화면 출력
-@Preview(showBackground = true)
 @Composable
-fun MyRecordScreen() {
+fun MyRecordScreen(navController: NavController) {
     var showRecordList by remember { mutableStateOf(false) }
     var showFollowScreen by remember { mutableStateOf(false) }
     var selectedCategory by remember { mutableStateOf("전체") }
@@ -50,7 +53,7 @@ fun MyRecordScreen() {
         }
 
         showRecordList -> {
-            MyRecordListScreen(category = selectedCategory)
+            MyRecordListScreen(category = selectedCategory, navController = navController)
         }
 
         else -> {
@@ -59,7 +62,8 @@ fun MyRecordScreen() {
                     selectedCategory = category
                     showRecordList = true
                 },
-                onFollowerClick = { showFollowScreen = true }
+                onFollowerClick = { showFollowScreen = true },
+                navController = navController
             )
         }
     }
@@ -68,7 +72,8 @@ fun MyRecordScreen() {
 @Composable
 fun MyRecordMainContent(
     onCategoryClick: (String) -> Unit,
-    onFollowerClick: () -> Unit
+    onFollowerClick: () -> Unit,
+    navController: NavController
 ) {
     var categoryCounts by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
 
@@ -87,7 +92,10 @@ fun MyRecordMainContent(
                 CategoryTabs(onCategoryClick, categoryCounts)
             }
             item {
-                RecordList(onCountReady = { counts -> categoryCounts = counts })
+                RecordList(
+                    onCountReady = { counts -> categoryCounts = counts },
+                    navController = navController
+                )
             }
         }
     }
@@ -298,7 +306,11 @@ fun CategoryTabs(
 
 // 5. 기록 리스트
 @Composable
-fun RecordList(onCountReady: (Map<String, Int>) -> Unit = {}) {
+fun RecordList(
+    onCountReady: (Map<String, Int>) -> Unit = {},
+    navController: NavController
+) {
+
     var diaries by remember { mutableStateOf<List<DiaryResponse>>(emptyList()) }
 
     val context = LocalContext.current
@@ -334,7 +346,7 @@ fun RecordList(onCountReady: (Map<String, Int>) -> Unit = {}) {
         Text("기록", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.Black)
 
         diaries.forEach { diary ->
-            DiaryCard(diary)
+            DiaryCard(diary, navController)
             Spacer(modifier = Modifier.height(12.dp))
         }
     }
@@ -357,7 +369,7 @@ fun rememberBase64ImageBitmap(base64String: String?): androidx.compose.ui.graphi
 }
 
 @Composable
-fun DiaryCard(diary: DiaryResponse) {
+fun DiaryCard(diary: DiaryResponse, navController: NavController) {
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
@@ -367,7 +379,23 @@ fun DiaryCard(diary: DiaryResponse) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(100.dp),
+            .height(100.dp)
+            .clickable {
+                val record = Record(
+                    id = diary.id,
+                    title = diary.title,
+                    date = diary.createdDate.split(" ")[0],
+                    category = diary.categoryLabel,
+                    rating = diary.rating.toFloat(),
+                    content = diary.content,
+                    isPublic = false,
+                    photoUri = null
+                )
+
+                navController.currentBackStackEntry?.savedStateHandle?.set("record", record)
+
+                navController.navigate("recordDetail")
+            },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -458,8 +486,9 @@ fun DiaryCard(diary: DiaryResponse) {
     }
 }
 
-//@Preview(showBackground = true, name = "MyRecord Preview")
+@Preview(showBackground = true)
 @Composable
 fun MyRecordScreenPreview() {
-    MyRecordScreen()
+    val fakeNavController = rememberNavController()
+    MyRecordScreen(navController = fakeNavController)
 }

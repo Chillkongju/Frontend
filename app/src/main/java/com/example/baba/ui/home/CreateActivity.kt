@@ -63,7 +63,7 @@ class CreateActivity : ComponentActivity() {
                         category = initialCategory,
                         date = initialDate,
                         title = title,
-                        rating = rating.toFloat(),
+                        rating = rating,
                         review = review,
                         onReviewChange = { review = it },
                         location = location,

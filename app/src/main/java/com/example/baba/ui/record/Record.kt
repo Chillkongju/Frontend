@@ -6,6 +6,7 @@ import kotlinx.parcelize.Parcelize
 
 @Parcelize
 data class Record(
+    val id: Long,
     val title: String,
     val date: String,
     val category: String,
