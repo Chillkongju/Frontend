@@ -30,6 +30,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
+import java.time.LocalDate
 import com.example.baba.R
 import com.example.baba.data.network.RetrofitInstance
 import com.example.baba.data.record.WatchedDateManager
@@ -38,7 +41,7 @@ import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MyRecordListScreen(category: String) {
+fun MyRecordListScreen(category: String, navController: NavController) {
     val categoryName = listOf("전체", "도서", "영화", "공연")
     val initialIndex = categoryName.indexOf(category).takeIf { it >= 0 } ?: 0
     var selected by rememberSaveable { mutableStateOf(initialIndex) }
@@ -155,7 +158,20 @@ fun MyRecordListScreen(category: String) {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .aspectRatio(0.7f)
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(8.dp)),
+                            onClick = {
+                                navController.currentBackStackEntry?.savedStateHandle?.set("record", Record(
+                                    id = record.id,
+                                    title = record.title,
+                                    date = record.date,
+                                    category = record.category,
+                                    rating = record.rating.toFloat(),
+                                    content = record.comment,
+                                    isPublic = false,
+                                    photoUri = null
+                                ))
+                                navController.navigate("recordDetail")
+                            }
                         )
                     }
                 }
@@ -174,7 +190,20 @@ fun MyRecordListScreen(category: String) {
                             rating = record.rating,
                             date = record.date,
                             comment = record.comment,
-                            imageBase64 = record.image
+                            imageBase64 = record.image,
+                            onClick = {
+                                navController.currentBackStackEntry?.savedStateHandle?.set("record", Record(
+                                    id = record.id,
+                                    title = record.title,
+                                    date = record.date,
+                                    category = record.category,
+                                    rating = record.rating.toFloat(),
+                                    content = record.comment,
+                                    isPublic = false,
+                                    photoUri = null
+                                ))
+                                navController.navigate("recordDetail")
+                            }
                         )
                     }
                 }
@@ -203,7 +232,8 @@ fun GridImageItem(
     imageBase64: String?,
     title: String,
     category: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
 ) {
     val imageBitmap = rememberBase64Image(imageBase64)
 
@@ -212,6 +242,7 @@ fun GridImageItem(
             .size(72.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(Color.LightGray)
+            .clickable { onClick() }
     ) {
         if (imageBitmap != null) {
             // 이미지가 있을 때는 이미지만 표시
@@ -275,7 +306,8 @@ fun RecordItem(
     rating: String,
     date: String,
     comment: String,
-    imageBase64: String?
+    imageBase64: String?,
+    onClick: () -> Unit
 ) {
     val context = LocalContext.current
 
@@ -286,7 +318,7 @@ fun RecordItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { }
+            .clickable { onClick() }
     ) {
         val imageBitmap = rememberBase64Image(imageBase64)
 
@@ -360,10 +392,4 @@ fun RecordItem(
             }
         }
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun MyRecordListPreview() {
-    MyRecordListScreen(category = "전체")
 }
