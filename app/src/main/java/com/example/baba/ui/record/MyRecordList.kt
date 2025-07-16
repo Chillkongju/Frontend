@@ -26,6 +26,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.baba.R
+import com.example.baba.data.network.RetrofitInstance
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,14 +36,34 @@ fun MyRecordListScreen(category: String) {
     var selected by rememberSaveable { mutableStateOf(initialIndex) }
     var isGridView by rememberSaveable { mutableStateOf(false) }
 
-    val records = listOf(
-        RecordData("하데스타운", "공연", "4.5", "2025.07.09.", "추천해요", R.drawable.ic_launcher_background),
-        RecordData("모순", "도서", "5.0", "2025.06.29.", "꼭 읽어야 할책", R.drawable.ic_nav_record),
-        RecordData("쥬라기 월드: 새로운 시작", "공연", "3.0", "2025.07.09.", "", R.drawable.recommend_book),
-        RecordData("8월의 크리스마스", "영화", "4.0", "2025.07.05.", "", R.drawable.recommend_show),
-        RecordData("디어 에반 핸슨", "영화", "4.7", "2025.07.01.", "", R.drawable.ic_nav_friend),
-        RecordData("이웃집 토토로", "영화", "4.8", "2025.06.25.", "", R.drawable.main_logo),
-    )
+    var records by remember { mutableStateOf<List<RecordData>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        try {
+            val response = RetrofitInstance.diaryApi.getAllMyDiaries(userId = 1L) // 사용자 ID는 필요 시 변경
+            if (response.isSuccessful) {
+                val diaries = response.body() ?: emptyList()
+                records = diaries.map {
+                    RecordData(
+                        title = it.title,
+                        category = when (it.category) {
+                            "BOOK" -> "도서"
+                            "MOVIE" -> "영화"
+                            "PERFORMANCE" -> "공연"
+                            else -> "기타"
+                        },
+                        rating = "4.0", // 백엔드 데이터 필요
+                        date = it.createdDate.split(" ")[0],
+                        comment = it.content,
+                        imageRes = R.drawable.ic_nav_record // 백엔드 데이터 필요
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
 
     val filteredRecords = if (selected == 0) records else records.filter { it.category == categoryName[selected] }
 
