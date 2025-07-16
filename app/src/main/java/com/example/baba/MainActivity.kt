@@ -27,7 +27,9 @@ import com.example.baba.ui.common.Screen
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.baba.data.network.RetrofitInstance
 import com.example.baba.data.record.WatchedDateManager
+import com.example.baba.ui.profile.EditProfileScreen
 import com.example.baba.ui.record.RecordDetailScreen
 import com.example.baba.ui.record.Record
 import java.time.LocalDate
@@ -36,6 +38,9 @@ import java.time.format.DateTimeFormatter
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        RetrofitInstance.init(applicationContext)
+
         enableEdgeToEdge()
         setContent {
             var showSplash by remember { mutableStateOf(true) }
@@ -103,6 +108,10 @@ fun AppNavigation() {
     val navController = rememberNavController()
 
     NavHost(navController = navController, startDestination = "recordList") {
+        composable("editProfile") {
+            EditProfileScreen(navController)
+        }
+
         composable("recordList") {
             MyRecordScreen(navController = navController)
         }
