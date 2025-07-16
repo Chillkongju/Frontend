@@ -45,7 +45,7 @@ fun CreateDetailScreen(
     category: String,
     date: LocalDate,
     title: String,
-    rating: Float,
+    rating: Double,
     review: String,
     onReviewChange: (String) -> Unit,
     location: String,
@@ -87,8 +87,9 @@ fun CreateDetailScreen(
                                 title = title,
                                 content = review,
                                 category = category,
-                                rating = rating.toInt(),
-                                watchedAt = date.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                                rating = rating,
+                                watchedAt = date.format(DateTimeFormatter.ISO_LOCAL_DATE),
+                                imageUrls = photos.map { it.toString() }
                             )
                             CoroutineScope(Dispatchers.IO).launch {
                                 try {

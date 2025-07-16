@@ -4,8 +4,9 @@ data class DiaryCreateRequest(
     val title: String,
     val content: String,
     val category: String,
-    val rating: Int,
-    val watchedAt: String
+    val rating: Double,
+    val watchedAt: String,
+    val imageUrls: List<String>
     // val public: Boolean,
     // val spoiler: Boolean,
 )

@@ -36,10 +36,10 @@ import java.time.format.DateTimeFormatter
 fun CreateScreen(
     selectedDate: LocalDate,
     title: String,
-    rating: Float,
+    rating: Double,
     onBack: () -> Unit,
     onTitleChange: (String) -> Unit,
-    onRatingChange: (Float) -> Unit,
+    onRatingChange: (Double) -> Unit,
     onNext: () -> Unit
 ) {
     // 이미지 첨부 상태만 로컬로 관리합니다
@@ -175,8 +175,8 @@ fun CreateScreen(
                                 val block = starSizePx + starSpacePx
                                 val idx = (offset.x / block).toInt().coerceIn(0, starCount - 1)
                                 val within = offset.x % block
-                                val newRating = idx + if (within > starSizePx / 2) 1f else 0.5f
-                                onRatingChange(newRating.coerceIn(0f, starCount.toFloat()))
+                                val newRating = idx + if (within > starSizePx / 2) 1.0 else 0.5
+                                onRatingChange(newRating.coerceIn(0.0, starCount.toDouble()))
                             }
                         }
                 ) {
@@ -187,8 +187,8 @@ fun CreateScreen(
                     ) {
                         for (i in 0 until starCount) {
                             val icon = when {
-                                rating >= i + 1f    -> Icons.Filled.Star
-                                rating >= i + 0.5f -> Icons.Filled.StarHalf
+                                rating >= i + 1.0    -> Icons.Filled.Star
+                                rating >= i + 0.5 -> Icons.Filled.StarHalf
                                 else               -> Icons.Outlined.StarBorder
                             }
                             Icon(
@@ -212,7 +212,7 @@ fun PreviewCreateScreen() {
     CreateScreen(
         selectedDate   = LocalDate.now(),
         title          = "",
-        rating         = 2.5f,
+        rating         = 2.5,
         onBack         = {},
         onTitleChange  = {},
         onRatingChange = {},
