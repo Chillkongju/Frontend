@@ -48,14 +48,20 @@ fun MyRecordListScreen(category: String, navController: NavController) {
     var isGridView by rememberSaveable { mutableStateOf(false) }
 
     var records by remember { mutableStateOf<List<RecordData>>(emptyList()) }
+    var memberName by remember { mutableStateOf("") }
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         WatchedDateManager.initialize(context)
         try {
-            val response = RetrofitInstance.diaryApi.getAllMyDiaries(userId = 1L) // 사용자 ID는 필요 시 변경
-            if (response.isSuccessful) {
-                val diaries = response.body() ?: emptyList()
+            val memberResponse = RetrofitInstance.memberApi.getMyInfo()
+            if (memberResponse.isSuccessful) {
+                memberName = memberResponse.body()?.name ?: ""
+            }
+
+            val diaryResponse = RetrofitInstance.diaryApi.getAllMyDiaries(userId = 1L)
+            if (diaryResponse.isSuccessful) {
+                val diaries = diaryResponse.body() ?: emptyList()
                 records = diaries.map {
                     RecordData(
                         id = it.id,
@@ -91,7 +97,11 @@ fun MyRecordListScreen(category: String, navController: NavController) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("칠공주's", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    text = if (memberName.isNotEmpty()) "$memberName’s" else "",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
                 Row {
                     IconButton(onClick = { isGridView = false }) {
                         Icon(

@@ -1,36 +1,50 @@
 package com.example.baba.data.network
 
+import android.content.Context
+import android.content.SharedPreferences
 import com.example.baba.data.auth.AuthApi
 import com.example.baba.data.friends.FriendsApi
+import com.example.baba.data.member.MemberApi
 import com.example.baba.data.record.DiaryApi
-import com.google.gson.FieldNamingPolicy
 import com.google.gson.GsonBuilder
+import okhttp3.Cookie
+import okhttp3.CookieJar
+import okhttp3.HttpUrl
+import okhttp3.JavaNetCookieJar
+import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.converter.scalars.ScalarsConverterFactory
+import java.net.CookieManager
+import java.net.CookiePolicy
 
 object RetrofitInstance {
-    private val gson = GsonBuilder()
-        .create()
+    private var client: OkHttpClient? = null
 
-    // 공용 Retrofit 인스턴스
+    fun init(context: Context) {
+        if (client == null) {
+            val cookieManager = CookieManager()
+            cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL)
+
+            client = OkHttpClient.Builder()
+                .cookieJar(JavaNetCookieJar(cookieManager))
+                .build()
+        }
+    }
+
+    private val gson = GsonBuilder().create()
+
     private val retrofit: Retrofit by lazy {
         Retrofit.Builder()
-                .baseUrl("http://10.0.2.2:8080/api/v1/")
+            .baseUrl("http://10.0.2.2:8080/api/v1/")
             .addConverterFactory(ScalarsConverterFactory.create())
             .addConverterFactory(GsonConverterFactory.create(gson))
+            .client(client ?: OkHttpClient())
             .build()
     }
 
-    val authApi: AuthApi by lazy {
-        retrofit.create(AuthApi::class.java)
-    }
-
-    val diaryApi: DiaryApi by lazy {
-        retrofit.create(DiaryApi::class.java)
-    }
-
-    val friendsApi: FriendsApi by lazy {
-        retrofit.create(FriendsApi::class.java)
-    }
+    val authApi: AuthApi by lazy { retrofit.create(AuthApi::class.java) }
+    val memberApi: MemberApi by lazy { retrofit.create(MemberApi::class.java) }
+    val diaryApi: DiaryApi by lazy { retrofit.create(DiaryApi::class.java) }
+    val friendsApi: FriendsApi by lazy { retrofit.create(FriendsApi::class.java) }
 }

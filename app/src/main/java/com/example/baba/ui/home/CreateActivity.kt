@@ -1,5 +1,6 @@
 package com.example.baba.ui.home
 
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
@@ -77,7 +78,10 @@ class CreateActivity : ComponentActivity() {
                         onPhotoChange = { photo = it },  // 사진 변경 콜백
                         onBack = { showDetail = false },
                         onSave = {
-                            // 저장 완료 후 화면 종료
+                            val intent = Intent().apply {
+                                putExtra("refresh", true)
+                            }
+                            setResult(RESULT_OK, intent)
                             Toast.makeText(this, "기록이 저장되었습니다.", Toast.LENGTH_SHORT).show()
                             finish()
                         }

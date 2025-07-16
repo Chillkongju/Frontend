@@ -26,15 +26,47 @@ import androidx.compose.ui.unit.sp
 import com.example.baba.data.network.RetrofitInstance
 import com.example.baba.data.record.DiaryResponse
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import coil.compose.rememberAsyncImagePainter
 import com.example.baba.R
+import com.example.baba.data.member.MemberInfoResponse
 import com.example.baba.data.record.WatchedDateManager
 import com.example.baba.ui.friends.FollowScreen
+import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+
+
+// 필터링 함수
+fun filterDiariesByTab(selectedTab: Int, diaries: List<DiaryResponse>): List<DiaryResponse> {
+    val today = LocalDate.now()
+    return when (selectedTab) {
+        0 -> { // 올해
+            diaries.filter {
+                val watchedDate = WatchedDateManager.getWatchedDate(it.id)
+                    ?: LocalDate.now() // watchedDate가 없으면 기본 현재 날짜 사용
+                watchedDate.year == today.year
+            }
+        }
+        1 -> { // 이번 달
+            diaries.filter {
+                val watchedDate = WatchedDateManager.getWatchedDate(it.id)
+                    ?: LocalDate.now() // watchedDate가 없으면 기본 현재 날짜 사용
+                watchedDate.year == today.year && watchedDate.month == today.month
+            }
+        }
+        2 -> { // 평생
+            diaries // 모든 데이터를 반환
+        }
+        else -> emptyList()
+    }
+}
+
 
 //화면 출력
 @Composable
@@ -77,8 +109,27 @@ fun MyRecordMainContent(
 ) {
     var categoryCounts by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
 
+    var memberInfo by remember { mutableStateOf<MemberInfoResponse?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        coroutineScope.launch {
+            try {
+                val response = RetrofitInstance.memberApi.getMyInfo()
+                if (response.isSuccessful) {
+                    memberInfo = response.body()
+                }
+            } catch (e: Exception) {
+                Log.e("MyRecordMainContent", "회원 정보 조회 실패: ${e.message}")
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
     Scaffold(
-        topBar = { TopBar() }
+        topBar = { TopBar(name = memberInfo?.name ?: "") }
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
@@ -86,7 +137,7 @@ fun MyRecordMainContent(
                 .padding(innerPadding)
                 .padding(bottom = 56.dp)
         ) {
-            item { ProfileCard(onFollowerClick) }
+            item { ProfileCard(onFollowerClick, navController, memberInfo = memberInfo) }
             item { TimeFilterTabs() }
             item {
                 CategoryTabs(onCategoryClick, categoryCounts)
@@ -103,7 +154,7 @@ fun MyRecordMainContent(
 
 // 1. 탑 바 구현
 @Composable
-fun TopBar() {
+fun TopBar(name: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -111,7 +162,7 @@ fun TopBar() {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("칠공주's", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Text("$name's", fontSize = 20.sp, fontWeight = FontWeight.Bold)
         Row {
             Icon(Icons.Default.Search, contentDescription = "Search")
             Spacer(modifier = Modifier.width(16.dp))
@@ -122,7 +173,25 @@ fun TopBar() {
 
 // 2. 프로필 카드 구현
 @Composable
-fun ProfileCard(onFollowerClick: () -> Unit) {
+fun ProfileCard(
+    onFollowerClick: () -> Unit,
+    navController: NavController,
+    memberInfo: MemberInfoResponse?
+) {
+    var followerCount by remember { mutableStateOf(0) }
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        coroutineScope.launch {
+            try {
+                val followers = RetrofitInstance.friendsApi.getFollowerList()
+                followerCount = followers.size
+            } catch (e: Exception) {
+                Log.e("ProfileCard", "팔로워 수 조회 실패: ${e.message}")
+            }
+        }
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -131,85 +200,110 @@ fun ProfileCard(onFollowerClick: () -> Unit) {
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
-        Box(modifier = Modifier
-            .fillMaxSize()
-            .height(250.dp)) {
-
-            Column(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(start = 16.dp, top = 16.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.AccountCircle,
-                    contentDescription = "Profile Image",
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .height(250.dp)
+        ) {
+            if (memberInfo == null) {
+                // 로딩 상태
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                Column(
                     modifier = Modifier
-                        .size(75.dp)
-                        .testTag("profile_image")
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = "칠공주",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    modifier = Modifier.testTag("name")
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = "안녕하세요 칠공주의 공간입니다.",
-                    fontSize = 13.sp,
-                    modifier = Modifier.testTag("coment")
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Button(
-                    onClick = onFollowerClick,
-                    shape = RoundedCornerShape(20.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF1F1F1))
+                        .align(Alignment.TopStart)
+                        .padding(start = 16.dp, top = 16.dp)
                 ) {
-                    Text("팔로워 3", fontSize = 12.sp, color = Color.Black)
+                    // 프로필 이미지
+                    if (memberInfo.profileImageUrl != null) {
+                        Image(
+                            painter = rememberAsyncImagePainter(memberInfo.profileImageUrl),
+                            contentDescription = "Profile Image",
+                            modifier = Modifier
+                                .size(75.dp)
+                                .clip(CircleShape)
+                                .testTag("profile_image"),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.AccountCircle,
+                            contentDescription = "Profile Image",
+                            modifier = Modifier
+                                .size(75.dp)
+                                .testTag("profile_image")
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = memberInfo.name,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        modifier = Modifier.testTag("name")
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    Text(
+                        text = memberInfo.bio ?: "안녕하세요!",
+                        fontSize = 13.sp,
+                        modifier = Modifier.testTag("comment"),
+                        maxLines = 2
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Button(
+                        onClick = onFollowerClick,
+                        shape = RoundedCornerShape(20.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF1F1F1))
+                    ) {
+                        Text("팔로워 $followerCount", fontSize = 12.sp, color = Color.Black)
+                    }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Button(
+                        onClick = { },
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.size(36.dp),
+                        contentPadding = PaddingValues(0.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF000))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "Share",
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+
+                    Button(
+                        onClick = { navController.navigate("editProfile") },
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.size(36.dp),
+                        contentPadding = PaddingValues(0.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF000))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit",
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
             }
-
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                Button(
-                    onClick = { },
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.size(36.dp),
-                    contentPadding = PaddingValues(0.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF000))
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Share,
-                        contentDescription = "Share",
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-
-                Button(
-                    onClick = { },
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.size(36.dp),
-                    contentPadding = PaddingValues(0.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF000))
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Edit",
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
-
         }
     }
 }
