@@ -21,7 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.baba.ui.theme.*
-import androidx.compose.ui.platform.LocalContext
+
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -38,6 +38,9 @@ fun FriendProfileScreen(
     val followText = if (isFollowing) "팔로잉" else "팔로우"
     val selectedTab = remember { mutableStateOf(0) }
     val selectedCategory = remember { mutableStateOf(initialSelectedCategory) }
+    val scope = rememberCoroutineScope()
+    val bottomSheetState = rememberModalBottomSheetState()
+    var showBottomSheet by remember { mutableStateOf(false) }
 
     Scaffold(
         contentWindowInsets = ScaffoldDefaults.contentWindowInsets,
@@ -66,9 +69,14 @@ fun FriendProfileScreen(
                     followText = followText,
                     isFollowing = isFollowing,
                     onFollowClick = {
-                        isFollowing = !isFollowing // 상태 토글
-                        onFollowChanged(isFollowing)
+                        if (isFollowing) {
+                            showBottomSheet = true // 언팔 바텀시트 열기
+                        } else {
+                            isFollowing = true // 팔로우 처리
+                            onFollowChanged(isFollowing)
+                        }
                     }
+
                 )
             }
 
@@ -86,6 +94,50 @@ fun FriendProfileScreen(
             }
         }
     }
+    if (showBottomSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showBottomSheet = false },
+            sheetState = bottomSheetState
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Text(
+                    "언팔로우 하시겠습니까?",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = {
+                        isFollowing = false // 언팔 처리
+                        onFollowChanged(false)
+                        showBottomSheet = false
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Red,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text("언팔로우")
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                TextButton(
+                    onClick = { showBottomSheet = false },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("취소", color = Color.Gray)
+                }
+            }
+        }
+    }
+
 }
 
 @Composable
