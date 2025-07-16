@@ -21,7 +21,6 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.baba.data.network.RetrofitInstance
@@ -38,23 +37,38 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun MyRecordScreen() {
     var showRecordList by remember { mutableStateOf(false) }
+    var showFollowScreen by remember { mutableStateOf(false) }
     var selectedCategory by remember { mutableStateOf("전체") }
 
-    if (showRecordList) {
-        MyRecordListScreen(category = selectedCategory)
-    } else {
-        MyRecordMainContent(
-            onCategoryClick = { category ->
-                selectedCategory = category
-                showRecordList = true
-            }
-        )
+    when {
+        showFollowScreen -> {
+            FollowScreen(
+                currentRoute = "friends",
+                onNavigate = { /* TODO: 바텀 네비 전환 로직 */ },
+                onBackClick = { showFollowScreen = false } // ← 뒤로가기 시 이전 화면
+            )
+        }
+
+        showRecordList -> {
+            MyRecordListScreen(category = selectedCategory)
+        }
+
+        else -> {
+            MyRecordMainContent(
+                onCategoryClick = { category ->
+                    selectedCategory = category
+                    showRecordList = true
+                },
+                onFollowerClick = { showFollowScreen = true }
+            )
+        }
     }
 }
 
 @Composable
 fun MyRecordMainContent(
-    onCategoryClick: (String) -> Unit
+    onCategoryClick: (String) -> Unit,
+    onFollowerClick: () -> Unit
 ) {
     var categoryCounts by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
 
@@ -67,7 +81,7 @@ fun MyRecordMainContent(
                 .padding(innerPadding)
                 .padding(bottom = 56.dp)
         ) {
-            item { ProfileCard() }
+            item { ProfileCard(onFollowerClick) }
             item { TimeFilterTabs() }
             item {
                 CategoryTabs(onCategoryClick, categoryCounts)
@@ -100,7 +114,7 @@ fun TopBar() {
 
 // 2. 프로필 카드 구현
 @Composable
-fun ProfileCard() {
+fun ProfileCard(onFollowerClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -144,7 +158,7 @@ fun ProfileCard() {
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Button(
-                    onClick = { /* TODO */ },
+                    onClick = onFollowerClick,
                     shape = RoundedCornerShape(20.dp),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF1F1F1))

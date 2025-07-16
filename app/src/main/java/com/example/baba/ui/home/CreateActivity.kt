@@ -72,6 +72,7 @@ class CreateActivity : ComponentActivity() {
                         onPublicChange = { isPublic = it },
                         includeSpoiler = includeSpoiler,
                         onSpoilerChange = { includeSpoiler = it },
+
                         photo = photo,  // 단일 사진 전달
                         onPhotoChange = { photo = it },  // 사진 변경 콜백
                         onBack = { showDetail = false },

@@ -54,7 +54,7 @@ fun CreateDetailScreen(
     category: String,
     date: LocalDate,
     title: String,
-    rating: Float,
+    rating: Double,
     review: String,
     onReviewChange: (String) -> Unit,
     location: String,

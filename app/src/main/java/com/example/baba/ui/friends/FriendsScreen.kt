@@ -76,7 +76,7 @@ data class FeedPost(
     val contentCategory: String,
     val contentYear: String,
     val contentImage: Int,
-    val rating: Float,
+    val rating: Double,
     val reviewText: String,
     val likes: Int,
     val comments: Int
@@ -130,7 +130,7 @@ fun FriendsScreen(navController: NavController? = null) {
             contentCategory = "영화",
             contentYear = "2019",
             contentImage = R.drawable.friend_movie_poster_1,
-            rating = 4.0f,
+            rating = 4.0,
             reviewText = "4dx로 봤는데 영화관 향기가 좋았음 디즈니 실사화 중 제일 맘에 들었음",
             likes = 10,
             comments = 10
@@ -145,7 +145,7 @@ fun FriendsScreen(navController: NavController? = null) {
             contentCategory = "영화",
             contentYear = "2024",
             contentImage = R.drawable.friend_movie_poster_2,
-            rating = 4.5f,
+            rating = 4.5,
             reviewText = "재밌다.. 연출 넘 좋음",
             likes = 10,
             comments = 10
@@ -160,7 +160,7 @@ fun FriendsScreen(navController: NavController? = null) {
             contentCategory = "도서",
             contentYear = "2024",
             contentImage = R.drawable.friend_book_poster_1,
-            rating = 4.5f,
+            rating = 4.5,
             reviewText = "읽는 내내 꿈속에서 살고 있는 듯한 느낌이 들었다",
             likes = 2,
             comments = 10
@@ -175,7 +175,7 @@ fun FriendsScreen(navController: NavController? = null) {
             contentCategory = "공연",
             contentYear = "2023",
             contentImage = R.drawable.friend_show_poster_1,
-            rating = 4.5f,
+            rating = 4.5,
             reviewText = "읽는 내내 꿈속에서 살고 있는 듯한 느낌이 들었다",
             likes = 2,
             comments = 10
