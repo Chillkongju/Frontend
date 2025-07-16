@@ -14,6 +14,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.draw.alpha
 import com.example.baba.ui.auth.LoginScreen
 import com.example.baba.ui.auth.SignupScreen
 import com.example.baba.ui.auth.Splash
@@ -88,16 +90,42 @@ fun MainScreen() {
             )
         }
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            when (currentRoute) {
-                Screen.Home.route -> HomeScreen()
-                Screen.Record.route -> AppNavigation()
-                Screen.Recommendation.route -> RecommendationScreen()
-                Screen.Friends.route -> FriendsScreen()
+            // 모든 화면을 항상 렌더링하되, 보이기/숨기기만 제어
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .alpha(if (currentRoute == Screen.Home.route) 1f else 0f)
+            ) {
+                HomeScreen()
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .alpha(if (currentRoute == Screen.Record.route) 1f else 0f)
+            ) {
+                AppNavigation()
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .alpha(if (currentRoute == Screen.Recommendation.route) 1f else 0f)
+            ) {
+                RecommendationScreen()
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .alpha(if (currentRoute == Screen.Friends.route) 1f else 0f)
+            ) {
+                FriendsScreen()
             }
         }
     }
@@ -154,7 +182,6 @@ fun AppNavigation() {
     }
 }
 
-//@Preview(showBackground = true)
 @Composable
 fun MainScreenPreview() {
     BABATheme {
