@@ -36,7 +36,20 @@ fun FollowScreen(
     var followingList by remember { mutableStateOf<List<FriendResponse>>(emptyList()) }
     var followerList by remember { mutableStateOf<List<FriendResponse>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
+    var currentUsername by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        try {
+            val memberResponse = RetrofitInstance.memberApi.getMyInfo()
+            if (memberResponse.isSuccessful && memberResponse.body() != null) {
+                currentUsername = memberResponse.body()!!.username
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
 
     // 탭 타이틀 동적 생성
     val tabTitles = listOf(
@@ -45,19 +58,21 @@ fun FollowScreen(
     )
 
     // API 호출
-    LaunchedEffect(selectedTabIndex) {
-        coroutineScope.launch {
-            isLoading = true
-            try {
-                if (selectedTabIndex == 0) {
-                    followingList = RetrofitInstance.friendsApi.getFollowingList()
-                } else {
-                    followerList = RetrofitInstance.friendsApi.getFollowerList()
+    LaunchedEffect(selectedTabIndex, currentUsername) {
+        if (currentUsername.isNotEmpty()) {
+            coroutineScope.launch {
+                isLoading = true
+                try {
+                    if (selectedTabIndex == 0) {
+                        followingList = RetrofitInstance.friendsApi.getFollowingList(currentUsername)
+                    } else {
+                        followerList = RetrofitInstance.friendsApi.getFollowerList(currentUsername)
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                } finally {
+                    isLoading = false
                 }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            } finally {
-                isLoading = false
             }
         }
     }
