@@ -143,30 +143,8 @@ fun RecordNavigation() {
                 ?.get<Record>("record")
 
             record?.let {
-                val actualWatchedDate = WatchedDateManager.getWatchedDate(record.id)
-                    ?: try {
-                        when {
-                            it.date.contains(".") -> {
-                                val dateStr = it.date.replace(".", "-").removeSuffix("-")
-                                LocalDate.parse(dateStr)
-                            }
-                            it.date.contains("-") -> {
-                                LocalDate.parse(it.date)
-                            }
-                            else -> LocalDate.now()
-                        }
-                    } catch (e: Exception) {
-                        LocalDate.now()
-                    }
-
                 RecordDetailScreen(
-                    title = it.title,
-                    date = actualWatchedDate,
-                    rating = it.rating,
-                    content = it.content,
-                    isPublic = it.isPublic,
-                    category = it.category,
-                    photoUri = it.photoUri,
+                    record = it,
                     navController = recordNavController
                 )
             }

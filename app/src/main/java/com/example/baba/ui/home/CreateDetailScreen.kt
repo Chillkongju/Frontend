@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import com.example.baba.data.network.RetrofitInstance
+import com.example.baba.data.network.SessionManager
 import com.example.baba.data.record.WatchedDateManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -110,6 +111,8 @@ fun CreateDetailScreen(
                         onClick = {
                             CoroutineScope(Dispatchers.IO).launch {
                                 try {
+                                    Log.d("CreateDetail", "현재 userId: $userId")
+
                                     val imagePart = photo?.let { uriToMultipart(it) }
 
                                     val response = RetrofitInstance.diaryApi.createDiary(
@@ -127,6 +130,7 @@ fun CreateDetailScreen(
                                             response.body()?.let { diaryResponse ->
                                                 WatchedDateManager.setWatchedDate(diaryResponse.id, date)
                                             }
+                                            SessionManager.needsRefresh = true
                                             Toast.makeText(context, "기록 저장 성공", Toast.LENGTH_SHORT).show()
                                             onSave()
                                         } else {
