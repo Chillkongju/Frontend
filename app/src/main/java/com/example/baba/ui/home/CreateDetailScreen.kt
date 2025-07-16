@@ -133,9 +133,27 @@ fun CreateDetailScreen(
                                             SessionManager.needsRefresh = true
                                             Toast.makeText(context, "기록 저장 성공", Toast.LENGTH_SHORT).show()
                                             onSave()
+
+                                            // 백그라운드에서 추천 생성
+                                            response.body()?.let { diaryResponse ->
+                                                CoroutineScope(Dispatchers.IO).launch {
+                                                    try {
+                                                        Log.d("CreateDetail", "백그라운드 추천 생성 시작: diaryId=${diaryResponse.id}")
+                                                        val recommendResponse = RetrofitInstance.recommendationApi.recommendDaily(diaryResponse.id)
+                                                        Log.d("CreateDetail", "추천 생성 응답 코드: ${recommendResponse.code()}")
+                                                        Log.d("CreateDetail", "추천 생성 성공: ${recommendResponse.isSuccessful}")
+                                                        if (recommendResponse.isSuccessful) {
+                                                            Log.d("CreateDetail", "추천 개수: ${recommendResponse.body()?.size}")
+                                                        } else {
+                                                            Log.e("CreateDetail", "추천 생성 실패: ${recommendResponse.errorBody()?.string()}")
+                                                        }
+                                                    } catch (e: Exception) {
+                                                        Log.e("CreateDetail", "추천 생성 예외: ${e.message}", e)
+                                                    }
+                                                }
+                                            }
                                         } else {
                                             Toast.makeText(context, "저장 실패: ${response.code()}", Toast.LENGTH_SHORT).show()
-                                            Log.e("CreateDetail", "Error: ${response.errorBody()?.string()}")
                                         }
                                     }
                                 } catch (e: Exception) {

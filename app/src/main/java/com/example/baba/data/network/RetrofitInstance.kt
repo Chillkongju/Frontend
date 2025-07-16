@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import com.example.baba.data.auth.AuthApi
 import com.example.baba.data.friends.FriendsApi
 import com.example.baba.data.member.MemberApi
+import com.example.baba.data.recommendation.RecommendationApi
 import com.example.baba.data.record.DiaryApi
 import com.google.gson.GsonBuilder
 import okhttp3.Cookie
@@ -17,6 +18,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.converter.scalars.ScalarsConverterFactory
 import java.net.CookieManager
 import java.net.CookiePolicy
+import java.util.concurrent.TimeUnit
 
 object RetrofitInstance {
     private var client: OkHttpClient? = null
@@ -28,6 +30,9 @@ object RetrofitInstance {
 
             client = OkHttpClient.Builder()
                 .cookieJar(JavaNetCookieJar(cookieManager))
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(60, TimeUnit.SECONDS)
+                .writeTimeout(30, TimeUnit.SECONDS)
                 .build()
         }
     }
@@ -47,4 +52,5 @@ object RetrofitInstance {
     val memberApi: MemberApi by lazy { retrofit.create(MemberApi::class.java) }
     val diaryApi: DiaryApi by lazy { retrofit.create(DiaryApi::class.java) }
     val friendsApi: FriendsApi by lazy { retrofit.create(FriendsApi::class.java) }
+    val recommendationApi: RecommendationApi by lazy { retrofit.create(RecommendationApi::class.java) }
 }
