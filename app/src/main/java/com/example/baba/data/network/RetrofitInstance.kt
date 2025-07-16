@@ -1,6 +1,7 @@
 package com.example.baba.data.network
 
 import com.example.baba.data.auth.AuthApi
+import com.example.baba.data.friends.FriendsApi
 import com.example.baba.data.record.DiaryApi
 import com.google.gson.FieldNamingPolicy
 import com.google.gson.GsonBuilder
@@ -27,5 +28,9 @@ object RetrofitInstance {
 
     val diaryApi: DiaryApi by lazy {
         retrofit.create(DiaryApi::class.java)
+    }
+
+    val friendsApi: FriendsApi by lazy {
+        retrofit.create(FriendsApi::class.java)
     }
 }
