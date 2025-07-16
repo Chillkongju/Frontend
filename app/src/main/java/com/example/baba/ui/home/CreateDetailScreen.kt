@@ -21,6 +21,9 @@ import androidx.compose.material.icons.filled.StarHalf
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -30,7 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import com.example.baba.data.network.RetrofitInstance
-import com.example.baba.data.record.DiaryCreateRequest
+import com.example.baba.data.record.WatchedDateManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -66,6 +69,10 @@ fun CreateDetailScreen(
     onSave: () -> Unit
 ) {
     val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        WatchedDateManager.initialize(context)
+    }
 
     // 갤러리 런처 (단일 이미지)
     val imagePickerLauncher = rememberLauncherForActivityResult(
@@ -115,9 +122,11 @@ fun CreateDetailScreen(
                                         imageFile = imagePart
                                     )
 
-
                                     withContext(Dispatchers.Main) {
                                         if (response.isSuccessful) {
+                                            response.body()?.let { diaryResponse ->
+                                                WatchedDateManager.setWatchedDate(diaryResponse.id, date)
+                                            }
                                             Toast.makeText(context, "기록 저장 성공", Toast.LENGTH_SHORT).show()
                                             onSave()
                                         } else {

@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.*
 import androidx.core.view.WindowCompat
 import com.example.baba.data.network.SessionManager.userId
+import com.example.baba.data.record.WatchedDateManager
 import com.example.baba.ui.theme.BABATheme
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -15,6 +16,9 @@ import java.time.format.DateTimeFormatter
 class CreateActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        WatchedDateManager.initialize(this)
+
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         val initialCategory = intent.getStringExtra("category") ?: "PERFORMANCE"

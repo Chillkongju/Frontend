@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -23,9 +24,27 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.baba.R
+import com.example.baba.data.network.RetrofitInstance
+import com.example.baba.data.record.DiaryResponse
 import com.example.baba.ui.theme.TextBlack
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import android.graphics.BitmapFactory
+import android.util.Base64
+import androidx.compose.ui.graphics.ImageBitmap
+import com.example.baba.data.record.WatchedDateManager
+import java.time.LocalDateTime
+
+fun rememberBase64ImageBitmap(base64String: String?): ImageBitmap? {
+    return try {
+        if (base64String.isNullOrEmpty()) return null
+        val imageBytes = Base64.decode(base64String, Base64.DEFAULT)
+        val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+        bitmap?.asImageBitmap()
+    } catch (e: Exception) {
+        null
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -38,13 +57,38 @@ fun HomeScreen() {
     var showCategorySheet by remember { mutableStateOf(false) }
     var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
 
-    val recordMap = if (currentMonth.year == today.year && currentMonth.monthValue == today.monthValue) {
-        mapOf(
-            4 to R.drawable.sample_movie,
-            8 to R.drawable.sample_theater,
-            12 to R.drawable.sample_movie2
-        )
-    } else emptyMap()
+    val diaries = remember { mutableStateListOf<DiaryResponse>() }
+
+    LaunchedEffect(Unit) {
+        WatchedDateManager.initialize(context)
+    }
+
+    // 기록 데이터 불러오기
+    LaunchedEffect(currentMonth) {
+        try {
+            val response = RetrofitInstance.diaryApi.getAllMyDiaries(userId = 1L)
+            if (response.isSuccessful) {
+                diaries.clear()
+                diaries.addAll(response.body() ?: emptyList())
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    // 관람 날짜 기준으로 기록 매핑
+    val recordMap = diaries.mapNotNull { diary ->
+        val watchedDate = WatchedDateManager.getWatchedDate(diary.id)
+            ?: LocalDateTime.parse(diary.createdDate, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                .toLocalDate()
+
+        if (watchedDate.year == currentMonth.year && watchedDate.month == currentMonth.month) {
+            watchedDate.dayOfMonth to Triple(true, diary.image, diary.category)
+        } else {
+            null
+        }
+    }.toMap()
+
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -138,7 +182,10 @@ fun HomeScreen() {
                     val day = idx + 1
                     val date = currentMonth.withDayOfMonth(day)
                     val isToday = date == today
-                    val hasRecord = recordMap.containsKey(day)
+                    val recordInfo = recordMap[day]
+                    val hasRecord = recordInfo?.first ?: false
+                    val base64Image = recordInfo?.second
+                    val category = recordInfo?.third
 
                     Box(
                         modifier = Modifier
@@ -151,25 +198,8 @@ fun HomeScreen() {
                         contentAlignment = Alignment.Center
                     ) {
                         when {
-                            hasRecord -> {
-                                Image(
-                                    painter = painterResource(id = recordMap[day]!!),
-                                    contentDescription = "기록 이미지",
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(MaterialTheme.shapes.small)
-                                )
-                                Text(
-                                    text = day.toString(),
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White,
-                                    modifier = Modifier
-                                        .align(Alignment.TopCenter)
-                                        .padding(top = 4.dp)
-                                )
-                            }
                             isToday -> {
+                                // 오늘 날짜 표시
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
@@ -193,7 +223,43 @@ fun HomeScreen() {
                                     }
                                 }
                             }
+                            hasRecord && base64Image != null -> {
+                                // 기록 있음 + 사진 있음: 사진만 표시
+                                val imageBitmap = rememberBase64ImageBitmap(base64Image)
+                                if (imageBitmap != null) {
+                                    Image(
+                                        bitmap = imageBitmap,
+                                        contentDescription = "기록 이미지",
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(MaterialTheme.shapes.small)
+                                    )
+                                }
+                            }
+                            hasRecord && base64Image == null -> {
+                                // 기록 있음 + 사진 없음: 회색 사각형 + 카테고리 아이콘
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color.LightGray, shape = MaterialTheme.shapes.small),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Image(
+                                        painter = painterResource(
+                                            id = when (category) {
+                                                "BOOK" -> R.drawable.recommend_book
+                                                "MOVIE" -> R.drawable.recommend_movie
+                                                "PERFORMANCE" -> R.drawable.recommend_show
+                                                else -> R.drawable.ic_add
+                                            }
+                                        ),
+                                        contentDescription = "카테고리 아이콘",
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
                             else -> {
+                                // 기록 없음: 날짜만 표시
                                 Text(
                                     text = day.toString(),
                                     fontSize = 12.sp,

@@ -1,6 +1,9 @@
 package com.example.baba.ui.record
 
+import android.graphics.BitmapFactory
+import android.util.Base64
 import android.util.Log
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -14,15 +17,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import com.example.baba.data.network.RetrofitInstance
 import com.example.baba.data.record.DiaryResponse
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import com.example.baba.R
+import com.example.baba.data.record.WatchedDateManager
+import java.time.format.DateTimeFormatter
 
 //화면 출력
 @Preview(showBackground = true)
@@ -69,7 +78,6 @@ fun MyRecordMainContent(
         }
     }
 }
-
 
 // 1. 탑 바 구현
 @Composable
@@ -274,11 +282,12 @@ fun CategoryTabs(
     }
 }
 
-
 // 5. 기록 리스트
 @Composable
 fun RecordList(onCountReady: (Map<String, Int>) -> Unit = {}) {
     var diaries by remember { mutableStateOf<List<DiaryResponse>>(emptyList()) }
+
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         try {
@@ -317,9 +326,30 @@ fun RecordList(onCountReady: (Map<String, Int>) -> Unit = {}) {
     }
 }
 
+// Base64 문자열을 ImageBitmap으로 변환하는 함수
+@Composable
+fun rememberBase64ImageBitmap(base64String: String?): androidx.compose.ui.graphics.ImageBitmap? {
+    return remember(base64String) {
+        try {
+            if (base64String.isNullOrEmpty()) return@remember null
+            val imageBytes = Base64.decode(base64String, Base64.DEFAULT)
+            val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+            bitmap?.asImageBitmap()
+        } catch (e: Exception) {
+            Log.e("Base64Image", "이미지 변환 실패: ${e.message}")
+            null
+        }
+    }
+}
 
 @Composable
 fun DiaryCard(diary: DiaryResponse) {
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        WatchedDateManager.initialize(context)
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -334,15 +364,45 @@ fun DiaryCard(diary: DiaryResponse) {
                 .fillMaxSize(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 썸네일 이미지 (임시)
-            AsyncImage(
-                model = "https://via.placeholder.com/80", // 썸네일 이미지 URL 또는 diary.imageUrl
-                contentDescription = "썸네일",
+            // Base64 이미지 처리
+            val imageBitmap = rememberBase64ImageBitmap(diary.image)
+
+            Box(
                 modifier = Modifier
                     .size(64.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(Color.LightGray)
-            )
+            ) {
+                if (imageBitmap != null) {
+                    Image(
+                        bitmap = imageBitmap,
+                        contentDescription = "썸네일",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    // 이미지가 없을 때 플레이스홀더
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.LightGray),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            painter = painterResource(
+                                id = when (diary.category) {
+                                    "BOOK" -> R.drawable.recommend_book
+                                    "MOVIE" -> R.drawable.recommend_movie
+                                    "PERFORMANCE" -> R.drawable.recommend_show
+                                    else -> R.drawable.ic_add
+                                }
+                            ),
+                            contentDescription = "카테고리 아이콘",
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.width(12.dp))
 
@@ -362,11 +422,17 @@ fun DiaryCard(diary: DiaryResponse) {
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
+
+                val watchedDate = WatchedDateManager.getWatchedDate(diary.id)
+                    ?.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                    ?: diary.createdDate.split(" ")[0]
+
                 Text(
-                    text = diary.createdDate.split(" ")[0],  // 날짜만
+                    text = watchedDate,
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
+
                 Text(
                     text = diary.content,
                     fontSize = 12.sp,
@@ -377,7 +443,6 @@ fun DiaryCard(diary: DiaryResponse) {
         }
     }
 }
-
 
 //@Preview(showBackground = true, name = "MyRecord Preview")
 @Composable
