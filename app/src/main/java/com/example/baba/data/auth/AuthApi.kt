@@ -28,8 +28,5 @@ interface AuthApi {
 
     // 로그아웃
     @POST("auth/logout")
-    suspend fun logout(
-        @Header("authorization") accessToken: String,
-        @Header("refresh-token") refreshToken: String
-    ): Response<String>
+    suspend fun logout(): Response<String>
 }

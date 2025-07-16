@@ -4,8 +4,8 @@ import retrofit2.http.*
 
 interface FriendsApi {
    @GET("friends/following")
-   suspend fun getFollowingList(): List<FriendResponse>
+   suspend fun getFollowingList(@Query("username") username: String): List<FriendResponse>
 
    @GET("friends/follower")
-   suspend fun getFollowerList(): List<FriendResponse>
+   suspend fun getFollowerList(@Query("username") username: String): List<FriendResponse>
 }

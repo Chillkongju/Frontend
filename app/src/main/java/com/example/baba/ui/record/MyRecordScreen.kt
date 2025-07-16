@@ -1,8 +1,10 @@
 package com.example.baba.ui.record
 
+import android.content.Intent
 import android.graphics.BitmapFactory
 import android.util.Base64
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -33,11 +35,16 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberAsyncImagePainter
+import com.example.baba.MainActivity
 import com.example.baba.R
 import com.example.baba.data.member.MemberInfoResponse
+import com.example.baba.data.network.SessionManager
 import com.example.baba.data.record.WatchedDateManager
 import com.example.baba.ui.friends.FollowScreen
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -70,7 +77,7 @@ fun filterDiariesByTab(selectedTab: Int, diaries: List<DiaryResponse>): List<Dia
 
 //화면 출력
 @Composable
-fun MyRecordScreen(navController: NavController) {
+fun MyRecordScreen(navController: NavController, onLogout: () -> Unit) {
     var showRecordList by remember { mutableStateOf(false) }
     var showFollowScreen by remember { mutableStateOf(false) }
     var selectedCategory by remember { mutableStateOf("전체") }
@@ -95,7 +102,8 @@ fun MyRecordScreen(navController: NavController) {
                     showRecordList = true
                 },
                 onFollowerClick = { showFollowScreen = true },
-                navController = navController
+                navController = navController,
+                onLogout = onLogout
             )
         }
     }
@@ -105,7 +113,8 @@ fun MyRecordScreen(navController: NavController) {
 fun MyRecordMainContent(
     onCategoryClick: (String) -> Unit,
     onFollowerClick: () -> Unit,
-    navController: NavController
+    navController: NavController,
+    onLogout: () -> Unit
 ) {
     var categoryCounts by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
 
@@ -129,7 +138,7 @@ fun MyRecordMainContent(
     }
 
     Scaffold(
-        topBar = { TopBar(name = memberInfo?.name ?: "") }
+        topBar = { TopBar(name = memberInfo?.name ?: "", onLogout = onLogout) }
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
@@ -154,7 +163,10 @@ fun MyRecordMainContent(
 
 // 1. 탑 바 구현
 @Composable
-fun TopBar(name: String) {
+fun TopBar(name: String, onLogout: () -> Unit) {
+    var showDropdownMenu by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -166,7 +178,59 @@ fun TopBar(name: String) {
         Row {
             Icon(Icons.Default.Search, contentDescription = "Search")
             Spacer(modifier = Modifier.width(16.dp))
-            Icon(Icons.Default.Settings, contentDescription = "Settings")
+
+            Box {
+                Icon(
+                    Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    modifier = Modifier.clickable { showDropdownMenu = true }
+                )
+
+                DropdownMenu(
+                    expanded = showDropdownMenu,
+                    onDismissRequest = { showDropdownMenu = false },
+                    modifier = Modifier
+                        .width(120.dp)
+                        .background(Color.White, shape = RoundedCornerShape(8.dp))
+                ) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = "로그아웃",
+                                fontSize = 14.sp,
+                                color = Color.Black
+                            )
+                        },
+                        onClick = {
+                            showDropdownMenu = false
+                            CoroutineScope(Dispatchers.IO).launch {
+                                try {
+                                    val response = RetrofitInstance.authApi.logout()
+                                    withContext(Dispatchers.Main) {
+                                        if (response.isSuccessful) {
+                                            // 세션 정보 클리어
+                                            SessionManager.userId = null
+                                            SessionManager.needsRefresh = false
+
+                                            Toast.makeText(context, "로그아웃되었습니다.", Toast.LENGTH_SHORT).show()
+
+                                            // 콜백으로 로그아웃 처리
+                                            onLogout()  // ← Intent 대신 콜백 사용
+                                        } else {
+                                            Toast.makeText(context, "로그아웃 실패", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(context, "로그아웃 오류: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        },
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
+            }
         }
     }
 }
@@ -181,13 +245,15 @@ fun ProfileCard(
     var followerCount by remember { mutableStateOf(0) }
     val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit) {
-        coroutineScope.launch {
-            try {
-                val followers = RetrofitInstance.friendsApi.getFollowerList()
-                followerCount = followers.size
-            } catch (e: Exception) {
-                Log.e("ProfileCard", "팔로워 수 조회 실패: ${e.message}")
+    LaunchedEffect(memberInfo) {
+        memberInfo?.let { info ->
+            coroutineScope.launch {
+                try {
+                    val followers = RetrofitInstance.friendsApi.getFollowerList(info.username)
+                    followerCount = followers.size
+                } catch (e: Exception) {
+                    Log.e("ProfileCard", "팔로워 수 조회 실패: ${e.message}")
+                }
             }
         }
     }
@@ -398,32 +464,19 @@ fun CategoryTabs(
     }
 }
 
-// 5. 기록 리스트
+// 5. 기록 리스트 - 수정된 부분
 @Composable
 fun RecordList(
     onCountReady: (Map<String, Int>) -> Unit = {},
     navController: NavController
 ) {
     var diaries by remember { mutableStateOf<List<DiaryResponse>>(emptyList()) }
-    var currentUserId by remember { mutableStateOf<Long?>(null) }
     val context = LocalContext.current
 
-    // 현재 사용자 ID 가져오기
+    // SessionManager에서 직접 userId 가져오기
     LaunchedEffect(Unit) {
-        try {
-            val memberResponse = RetrofitInstance.memberApi.getMyInfo()
-            if (memberResponse.isSuccessful) {
-                currentUserId = memberResponse.body()?.id
-                println("현재 사용자 ID: $currentUserId")
-            }
-        } catch (e: Exception) {
-            Log.e("RecordList", "사용자 정보 조회 실패: ${e.message}")
-        }
-    }
-
-    // 사용자 ID를 가져온 후 다이어리 조회
-    LaunchedEffect(currentUserId) {
-        currentUserId?.let { userId ->
+        val userId = SessionManager.userId  // ← 직접 SessionManager 사용
+        if (userId != null && userId > 0) {
             try {
                 val response = RetrofitInstance.diaryApi.getAllMyDiaries(userId)
                 if (response.isSuccessful) {
@@ -599,5 +652,5 @@ fun DiaryCard(diary: DiaryResponse, navController: NavController) {
 @Composable
 fun MyRecordScreenPreview() {
     val fakeNavController = rememberNavController()
-    MyRecordScreen(navController = fakeNavController)
+    MyRecordScreen(navController = fakeNavController, onLogout = {})
 }

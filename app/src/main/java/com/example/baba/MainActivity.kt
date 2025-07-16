@@ -27,6 +27,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.baba.data.network.RetrofitInstance
+import com.example.baba.data.network.SessionManager
 import com.example.baba.data.record.WatchedDateManager
 import com.example.baba.ui.profile.EditProfileScreen
 import com.example.baba.ui.record.RecordDetailScreen
@@ -44,7 +45,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             var showSplash by remember { mutableStateOf(true) }
             var isSignUp by remember { mutableStateOf(false) }
-            var isLoggedIn by remember { mutableStateOf(false) }
+            var isLoggedIn by remember { mutableStateOf(SessionManager.userId != null) }
 
             when {
                 showSplash -> Splash {
@@ -66,14 +67,18 @@ class MainActivity : ComponentActivity() {
                     }
                 )
 
-                else -> MainScreen()
+                else -> MainScreen(
+                    onLogout = {
+                        isLoggedIn = false  // ← 로그아웃 콜백
+                    }
+                )
             }
         }
     }
 }
 
 @Composable
-fun MainScreen() {
+fun MainScreen(onLogout: () -> Unit) {
     val navController = rememberNavController()
 
     Scaffold(
@@ -106,7 +111,7 @@ fun MainScreen() {
             }
 
             composable(Screen.Record.route) {
-                RecordNavigation()
+                RecordNavigation(onLogout = onLogout)  // ← 콜백 전달
             }
 
             composable(Screen.Recommendation.route) {
@@ -121,7 +126,7 @@ fun MainScreen() {
 }
 
 @Composable
-fun RecordNavigation() {
+fun RecordNavigation(onLogout: () -> Unit) {
     val recordNavController = rememberNavController()
 
     NavHost(
@@ -133,7 +138,10 @@ fun RecordNavigation() {
         }
 
         composable("recordList") {
-            MyRecordScreen(navController = recordNavController)
+            MyRecordScreen(
+                navController = recordNavController,
+                onLogout = onLogout  // ← 콜백 전달
+            )
         }
 
         composable("recordDetail") {
@@ -155,6 +163,6 @@ fun RecordNavigation() {
 @Composable
 fun MainScreenPreview() {
     BABATheme {
-        MainScreen()
+        MainScreen(onLogout = {})
     }
 }

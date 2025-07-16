@@ -35,6 +35,7 @@ import androidx.navigation.compose.rememberNavController
 import java.time.LocalDate
 import com.example.baba.R
 import com.example.baba.data.network.RetrofitInstance
+import com.example.baba.data.network.SessionManager
 import com.example.baba.data.record.WatchedDateManager
 import com.example.baba.ui.theme.CoolGray500
 import java.time.format.DateTimeFormatter
@@ -54,36 +55,35 @@ fun MyRecordListScreen(category: String, navController: NavController) {
     LaunchedEffect(Unit) {
         WatchedDateManager.initialize(context)
         try {
+            // 회원 정보 조회 (이름만 가져오기)
             val memberResponse = RetrofitInstance.memberApi.getMyInfo()
             if (memberResponse.isSuccessful) {
                 memberName = memberResponse.body()?.name ?: ""
+            }
 
-                // 현재 사용자 ID 가져오기
-                val currentUserId = memberResponse.body()?.id
-                println("현재 사용자 ID: $currentUserId")
-
-                if (currentUserId != null) {
-                    val diaryResponse = RetrofitInstance.diaryApi.getAllMyDiaries(userId = currentUserId)
-                    if (diaryResponse.isSuccessful) {
-                        val diaries = diaryResponse.body() ?: emptyList()
-                        records = diaries.map {
-                            RecordData(
-                                id = it.id,
-                                title = it.title,
-                                category = when (it.category) {
-                                    "BOOK" -> "도서"
-                                    "MOVIE" -> "영화"
-                                    "PERFORMANCE" -> "공연"
-                                    else -> "기타"
-                                },
-                                rating = it.rating.toString(),
-                                date = WatchedDateManager.getWatchedDate(it.id)
-                                    ?.format(DateTimeFormatter.ISO_LOCAL_DATE)
-                                    ?: it.createdDate.split(" ")[0],
-                                comment = it.content,
-                                image = it.image
-                            )
-                        }
+            // SessionManager에서 직접 userId 가져오기
+            val currentUserId = SessionManager.userId
+            if (currentUserId != null && currentUserId > 0) {
+                val diaryResponse = RetrofitInstance.diaryApi.getAllMyDiaries(userId = currentUserId)
+                if (diaryResponse.isSuccessful) {
+                    val diaries = diaryResponse.body() ?: emptyList()
+                    records = diaries.map {
+                        RecordData(
+                            id = it.id,
+                            title = it.title,
+                            category = when (it.category) {
+                                "BOOK" -> "도서"
+                                "MOVIE" -> "영화"
+                                "PERFORMANCE" -> "공연"
+                                else -> "기타"
+                            },
+                            rating = it.rating.toString(),
+                            date = WatchedDateManager.getWatchedDate(it.id)
+                                ?.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                                ?: it.createdDate.split(" ")[0],
+                            comment = it.content,
+                            image = it.image
+                        )
                     }
                 }
             }

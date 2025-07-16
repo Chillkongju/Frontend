@@ -102,10 +102,14 @@ fun HomeScreen(navController: NavController? = null) {
     // 기록 데이터 불러오기 (refreshKey 변경 시에만 재실행)
     LaunchedEffect(currentMonth, refreshKey.value) {
         try {
-            val response = RetrofitInstance.diaryApi.getAllMyDiaries(userId = 1L)
-            if (response.isSuccessful) {
-                diaries.clear()
-                diaries.addAll(response.body() ?: emptyList())
+            // SessionManager에서 직접 userId 가져오기
+            val userId = SessionManager.userId
+            if (userId != null && userId > 0) {
+                val response = RetrofitInstance.diaryApi.getAllMyDiaries(userId = userId)
+                if (response.isSuccessful) {
+                    diaries.clear()
+                    diaries.addAll(response.body() ?: emptyList())
+                }
             }
         } catch (e: Exception) {
             e.printStackTrace()
