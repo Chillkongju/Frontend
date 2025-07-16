@@ -36,7 +36,9 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.baba.data.member.MemberInfoResponse
+import com.example.baba.data.network.SessionManager
 import com.example.baba.data.record.WatchedDateManager
+import kotlinx.coroutines.delay
 import java.time.LocalDateTime
 
 fun rememberBase64ImageBitmap(base64String: String?): ImageBitmap? {
@@ -72,10 +74,27 @@ fun HomeScreen(navController: NavController? = null) {
 
     // 새로고침 처리
     LaunchedEffect(Unit) {
+        if (SessionManager.needsRefresh) {
+            refreshKey.value++
+            SessionManager.needsRefresh = false
+        }
+
         savedStateHandle?.get<Boolean>("refresh")?.let { isRefresh ->
             if (isRefresh) {
                 refreshKey.value++
                 savedStateHandle.remove<Boolean>("refresh")
+            }
+        }
+    }
+
+    // 주기적으로 새로고침 플래그 체크
+    LaunchedEffect(refreshKey.value) {
+        while (true) {
+            delay(500) // 0.5초마다 체크
+            if (SessionManager.needsRefresh) {
+                refreshKey.value++
+                SessionManager.needsRefresh = false
+                break // 새로고침 후 루프 종료
             }
         }
     }

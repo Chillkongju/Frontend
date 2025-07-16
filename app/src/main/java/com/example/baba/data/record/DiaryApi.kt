@@ -19,4 +19,10 @@ interface DiaryApi {
 
     @GET("diaries/me")
     suspend fun getAllMyDiaries(@Query("id") userId: Long): Response<List<DiaryResponse>>
+
+    @DELETE("diaries/{diary_id}")
+    suspend fun deleteDiary(
+        @Path("diary_id") diaryId: Long,
+        @Query("memberId") memberId: Long
+    ): Response<String>
 }

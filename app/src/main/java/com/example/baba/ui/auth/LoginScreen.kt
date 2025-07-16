@@ -1,5 +1,6 @@
 package com.example.baba.ui.auth
 
+import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -124,8 +125,9 @@ fun LoginScreen(
                                     "user1" -> 1L
                                     "user2" -> 2L
                                     "admin" -> 99L
-                                    else -> -1L // 임시 userId
+                                    else -> 1L
                                 }
+                                Log.d("Login", "SessionManager.userId 설정됨: ${SessionManager.userId}")
                                 onLoginSuccess()
                             } else {
                                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()

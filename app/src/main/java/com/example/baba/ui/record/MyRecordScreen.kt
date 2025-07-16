@@ -404,30 +404,44 @@ fun RecordList(
     onCountReady: (Map<String, Int>) -> Unit = {},
     navController: NavController
 ) {
-
     var diaries by remember { mutableStateOf<List<DiaryResponse>>(emptyList()) }
-
+    var currentUserId by remember { mutableStateOf<Long?>(null) }
     val context = LocalContext.current
 
+    // 현재 사용자 ID 가져오기
     LaunchedEffect(Unit) {
         try {
-            val userId = 1L
-            val response = RetrofitInstance.diaryApi.getAllMyDiaries(userId)
-            if (response.isSuccessful) {
-                val data = response.body() ?: emptyList()
-                diaries = data
-
-                // 카테고리별 개수 계산
-                val counts = mapOf(
-                    "전체" to data.size,
-                    "도서" to data.count { it.category == "BOOK" },
-                    "영화" to data.count { it.category == "MOVIE" },
-                    "공연" to data.count { it.category == "PERFORMANCE" },
-                )
-                onCountReady(counts)
+            val memberResponse = RetrofitInstance.memberApi.getMyInfo()
+            if (memberResponse.isSuccessful) {
+                currentUserId = memberResponse.body()?.id
+                println("현재 사용자 ID: $currentUserId")
             }
         } catch (e: Exception) {
-            Log.e("RecordList", "일기 불러오기 실패: ${e.message}")
+            Log.e("RecordList", "사용자 정보 조회 실패: ${e.message}")
+        }
+    }
+
+    // 사용자 ID를 가져온 후 다이어리 조회
+    LaunchedEffect(currentUserId) {
+        currentUserId?.let { userId ->
+            try {
+                val response = RetrofitInstance.diaryApi.getAllMyDiaries(userId)
+                if (response.isSuccessful) {
+                    val data = response.body() ?: emptyList()
+                    diaries = data
+
+                    // 카테고리별 개수 계산
+                    val counts = mapOf(
+                        "전체" to data.size,
+                        "도서" to data.count { it.category == "BOOK" },
+                        "영화" to data.count { it.category == "MOVIE" },
+                        "공연" to data.count { it.category == "PERFORMANCE" },
+                    )
+                    onCountReady(counts)
+                }
+            } catch (e: Exception) {
+                Log.e("RecordList", "일기 불러오기 실패: ${e.message}")
+            }
         }
     }
 
@@ -445,6 +459,7 @@ fun RecordList(
         }
     }
 }
+
 
 // Base64 문자열을 ImageBitmap으로 변환하는 함수
 @Composable

@@ -57,28 +57,34 @@ fun MyRecordListScreen(category: String, navController: NavController) {
             val memberResponse = RetrofitInstance.memberApi.getMyInfo()
             if (memberResponse.isSuccessful) {
                 memberName = memberResponse.body()?.name ?: ""
-            }
 
-            val diaryResponse = RetrofitInstance.diaryApi.getAllMyDiaries(userId = 1L)
-            if (diaryResponse.isSuccessful) {
-                val diaries = diaryResponse.body() ?: emptyList()
-                records = diaries.map {
-                    RecordData(
-                        id = it.id,
-                        title = it.title,
-                        category = when (it.category) {
-                            "BOOK" -> "도서"
-                            "MOVIE" -> "영화"
-                            "PERFORMANCE" -> "공연"
-                            else -> "기타"
-                        },
-                        rating = it.rating.toString(),
-                        date = WatchedDateManager.getWatchedDate(it.id)
-                            ?.format(DateTimeFormatter.ISO_LOCAL_DATE)
-                            ?: it.createdDate.split(" ")[0],
-                        comment = it.content,
-                        image = it.image
-                    )
+                // 현재 사용자 ID 가져오기
+                val currentUserId = memberResponse.body()?.id
+                println("현재 사용자 ID: $currentUserId")
+
+                if (currentUserId != null) {
+                    val diaryResponse = RetrofitInstance.diaryApi.getAllMyDiaries(userId = currentUserId)
+                    if (diaryResponse.isSuccessful) {
+                        val diaries = diaryResponse.body() ?: emptyList()
+                        records = diaries.map {
+                            RecordData(
+                                id = it.id,
+                                title = it.title,
+                                category = when (it.category) {
+                                    "BOOK" -> "도서"
+                                    "MOVIE" -> "영화"
+                                    "PERFORMANCE" -> "공연"
+                                    else -> "기타"
+                                },
+                                rating = it.rating.toString(),
+                                date = WatchedDateManager.getWatchedDate(it.id)
+                                    ?.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                                    ?: it.createdDate.split(" ")[0],
+                                comment = it.content,
+                                image = it.image
+                            )
+                        }
+                    }
                 }
             }
         } catch (e: Exception) {
