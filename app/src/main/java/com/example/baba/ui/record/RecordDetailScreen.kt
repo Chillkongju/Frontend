@@ -6,26 +6,29 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,8 +42,10 @@ import com.example.baba.data.network.SessionManager
 import com.example.baba.data.recommendation.RecommendationResponse
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import androidx.compose.ui.res.painterResource
 import com.example.baba.R
+import com.example.baba.ui.theme.CoolGray700
+import com.example.baba.ui.common.CommentBottomSheet
+import com.example.baba.ui.common.Comment
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,6 +64,14 @@ fun RecordDetailScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var isDeleting by remember { mutableStateOf(false) }
     var showDropdownMenu by remember { mutableStateOf(false) }
+    var showCommentBottomSheet by remember { mutableStateOf(false) }
+    var isLiked by remember { mutableStateOf(false) }
+    var likeCount by remember { mutableStateOf(8) }
+
+    // 댓글 관리
+    val comments = remember { mutableListOf<Comment>().toMutableStateList() }
+    var commentCount by remember { mutableStateOf(6) }
+
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -67,29 +80,25 @@ fun RecordDetailScreen(
     var isLoadingRecommendations by remember { mutableStateOf(false) }
     var recommendationError by remember { mutableStateOf<String?>(null) }
 
+    // 더미 댓글 데이터 초기화
+    LaunchedEffect(Unit) {
+        comments.addAll(getDummyCommentsForRecord())
+    }
+
     // 추천 작품 로드
     LaunchedEffect(record.id) {
         isLoadingRecommendations = true
         recommendationError = null
 
         try {
-            Log.d("Recommendation", "추천 조회 시작: diaryId=${record.id}")
             val response = RetrofitInstance.recommendationApi.getRecommendationsByDiary(record.id)
 
-            Log.d("Recommendation", "응답 코드: ${response.code()}")
-            Log.d("Recommendation", "응답 성공: ${response.isSuccessful}")
-            Log.d("Recommendation", "응답 데이터: ${response.body()}")
-
             if (response.isSuccessful) {
-                val data = response.body() ?: emptyList()
-                Log.d("Recommendation", "추천 개수: ${data.size}")
-                recommendations = data
+                recommendations = response.body() ?: emptyList()
             } else {
-                Log.e("Recommendation", "에러 응답: ${response.errorBody()?.string()}")
                 recommendationError = "추천 작품을 불러오는데 실패했습니다"
             }
         } catch (e: Exception) {
-            Log.e("Recommendation", "예외 발생: ${e.message}", e)
             recommendationError = "네트워크 오류가 발생했습니다"
         } finally {
             isLoadingRecommendations = false
@@ -170,271 +179,439 @@ fun RecordDetailScreen(
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 80.dp)
-            .verticalScroll(rememberScrollState())
+        modifier = Modifier.fillMaxSize()
     ) {
-        // 상단 헤더 (뒤로가기 버튼과 더보기 버튼)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 16.dp, end = 16.dp, top = 16.dp)
+                .verticalScroll(rememberScrollState())
         ) {
-            // 뒤로가기 버튼
-            Icon(
-                imageVector = Icons.Default.ArrowBack,
-                contentDescription = "Back",
-                modifier = Modifier
-                    .size(28.dp)
-                    .clickable {
-                        navController.popBackStack()
-                    }
-            )
-
-            // 더보기 버튼과 드롭다운
-            Box {
+            // 상단 헤더 (뒤로가기 버튼과 더보기 버튼)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 뒤로가기 버튼
                 Icon(
-                    imageVector = Icons.Default.MoreVert,
-                    contentDescription = "More",
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
                     modifier = Modifier
                         .size(28.dp)
                         .clickable {
-                            showDropdownMenu = true
+                            navController.popBackStack()
                         }
                 )
 
-                DropdownMenu(
-                    expanded = showDropdownMenu,
-                    onDismissRequest = { showDropdownMenu = false },
-                    modifier = Modifier
-                        .width(120.dp)
-                        .background(Color.White, shape = RoundedCornerShape(8.dp))
-                ) {
-                    DropdownMenuItem(
-                        text = {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = "Edit",
-                                    modifier = Modifier.size(16.dp),
-                                    tint = Color.Gray
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "수정",
-                                    fontSize = 14.sp,
-                                    color = Color.Black
-                                )
-                            }
-                        },
-                        onClick = {
-                            showDropdownMenu = false
-                            // TODO: 수정 기능 구현
-                        }
-                    )
-
-                    DropdownMenuItem(
-                        text = {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = "Delete",
-                                    modifier = Modifier.size(16.dp),
-                                    tint = Color.Red
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "삭제",
-                                    fontSize = 14.sp,
-                                    color = Color.Red
-                                )
-                            }
-                        },
-                        onClick = {
-                            showDropdownMenu = false
-                            showDeleteDialog = true
-                        }
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // 이미지와 텍스트 정보를 가로로 배치
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // 이미지 또는 아이콘
-            Box(
-                modifier = Modifier
-                    .size(width = 100.dp, height = 140.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
-                    .background(Color.LightGray),
-                contentAlignment = Alignment.Center
-            ) {
-                if (record.photoUri != null) {
-                    Image(
-                        painter = rememberAsyncImagePainter(record.photoUri),
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    // 카테고리별 아이콘 표시
-                    Image(
-                        painter = painterResource(
-                            id = when (record.category) {
-                                "영화" -> R.drawable.recommend_movie
-                                "도서" -> R.drawable.recommend_book
-                                "공연" -> R.drawable.recommend_show
-                                else -> R.drawable.ic_add
-                            }
-                        ),
-                        contentDescription = "카테고리 아이콘",
-                        modifier = Modifier.size(40.dp)
-                    )
-                }
-            }
-
-            // 텍스트 정보
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                // 제목
-                Text(
-                    text = record.title,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
-                )
-
-                // 카테고리
-                Text(
-                    text = record.category,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // 날짜와 별점을 세로 선으로 구분
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // 별점
+                // 더보기 버튼과 드롭다운
+                Box {
                     Icon(
-                        imageVector = Icons.Default.Star,
-                        contentDescription = null,
-                        tint = Color.Blue,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Text(
-                        text = " ${record.rating} ",
-                        fontSize = 14.sp
-                    )
-
-                    // 구분선
-                    Text(
-                        text = "|",
-                        fontSize = 14.sp,
-                        color = Color.Gray,
-                        modifier = Modifier.padding(horizontal = 8.dp)
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "More",
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clickable {
+                                showDropdownMenu = true
+                            }
                     )
 
-                    // 날짜
-                    Text(
-                        text = date.format(dateFormatter),
-                        fontSize = 14.sp,
-                        color = Color.Gray
-                    )
+                    DropdownMenu(
+                        expanded = showDropdownMenu,
+                        onDismissRequest = { showDropdownMenu = false },
+                        modifier = Modifier
+                            .width(120.dp)
+                            .background(Color.White, shape = RoundedCornerShape(8.dp))
+                    ) {
+                        DropdownMenuItem(
+                            text = {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = "Edit",
+                                        modifier = Modifier.size(16.dp),
+                                        tint = Color.Gray
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "수정",
+                                        fontSize = 14.sp,
+                                        color = Color.Black
+                                    )
+                                }
+                            },
+                            onClick = {
+                                showDropdownMenu = false
+                                // TODO: 수정 기능 구현
+                            }
+                        )
+
+                        DropdownMenuItem(
+                            text = {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Delete",
+                                        modifier = Modifier.size(16.dp),
+                                        tint = Color.Red
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "삭제",
+                                        fontSize = 14.sp,
+                                        color = Color.Red
+                                    )
+                                }
+                            },
+                            onClick = {
+                                showDropdownMenu = false
+                                showDeleteDialog = true
+                            }
+                        )
+                    }
                 }
             }
-        }
 
-        // 내용
-        Text(
-            text = record.content,
-            fontSize = 14.sp,
-            modifier = Modifier.padding(top = 20.dp)
-        )
+            Spacer(modifier = Modifier.height(16.dp))
 
-        // 추천 작품 섹션 (기존 위치와 스타일 유지)
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 300.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "You might also like",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            when {
-                isLoadingRecommendations -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp
-                    )
-                }
-
-                recommendationError != null -> {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "추천 작품을 생성 중입니다",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray
+            // 이미지와 텍스트 정보를 가로로 배치
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // 이미지 또는 아이콘
+                Box(
+                    modifier = Modifier
+                        .size(width = 100.dp, height = 140.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
+                        .background(Color.LightGray),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (record.photoUri != null) {
+                        Image(
+                            painter = rememberAsyncImagePainter(record.photoUri),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        // 카테고리별 아이콘 표시
+                        Image(
+                            painter = painterResource(
+                                id = when (record.category) {
+                                    "영화" -> R.drawable.recommend_movie
+                                    "도서" -> R.drawable.recommend_book
+                                    "공연" -> R.drawable.recommend_show
+                                    else -> R.drawable.ic_add
+                                }
+                            ),
+                            contentDescription = "카테고리 아이콘",
+                            modifier = Modifier.size(40.dp)
                         )
                     }
                 }
 
-                recommendations.isEmpty() -> {
+                // 텍스트 정보
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    // 제목
                     Text(
-                        text = "추천 작품이 없습니다",
+                        text = record.title,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    // 카테고리
+                    Text(
+                        text = record.category,
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.Gray
                     )
-                }
 
-                else -> {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // 날짜와 별점을 세로 선으로 구분
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        recommendations.forEach { recommendation ->
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = recommendation.title,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    textAlign = TextAlign.Center,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    text = recommendation.genre,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    textAlign = TextAlign.Center,
-                                    color = Color.Gray
-                                )
+                        // 별점
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_rating_button_star),
+                            contentDescription = null,
+                            tint = Color.Blue,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = " ${record.rating} ",
+                            fontSize = 14.sp
+                        )
+
+                        // 구분선
+                        Text(
+                            text = "|",
+                            fontSize = 14.sp,
+                            color = Color.Gray,
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        )
+
+                        // 날짜
+                        Text(
+                            text = date.format(dateFormatter),
+                            fontSize = 14.sp,
+                            color = Color.Gray
+                        )
+                    }
+                }
+            }
+
+            // 내용
+            Text(
+                text = record.content,
+                fontSize = 14.sp,
+                modifier = Modifier.padding(top = 20.dp)
+            )
+
+            // 추천 작품 섹션
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 300.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "You might also like",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                when {
+                    isLoadingRecommendations -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                    }
+
+                    recommendationError != null -> {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "추천을 불러올 수 없습니다",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.Gray
+                            )
+                        }
+                    }
+
+                    recommendations.isEmpty() -> {
+                        Text(
+                            text = "추천 작품이 없습니다",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
+                    }
+
+                    else -> {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            recommendations.take(3).forEach { recommendation ->
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = recommendation.title,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = recommendation.genre.ifEmpty { record.category },
+                                        style = MaterialTheme.typography.labelSmall,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+
+        // 하단 좋아요/댓글 영역
+        Column {
+            Divider()
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.White)
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 좋아요 버튼
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CompositionLocalProvider(LocalContentColor provides Color.Unspecified) {
+                        Icon(
+                            painter = painterResource(
+                                id = if (isLiked) R.drawable.ic_like_filled else R.drawable.ic_like_outline
+                            ),
+                            contentDescription = "좋아요",
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clickable {
+                                    isLiked = !isLiked
+                                    likeCount += if (isLiked) 1 else -1
+                                }
+                        )
+                    }
+
+                    Text(
+                        text = likeCount.toString(),
+                        fontSize = 20.sp,
+                        color = CoolGray700
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                // 댓글 버튼
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CompositionLocalProvider(LocalContentColor provides Color.Unspecified) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_comment),
+                            contentDescription = "댓글",
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clickable {
+                                    showCommentBottomSheet = true
+                                }
+                        )
+                    }
+                    Text(
+                        text = commentCount.toString(),
+                        fontSize = 20.sp,
+                        color = CoolGray700
+                    )
+                }
+            }
         }
     }
+
+    if (showCommentBottomSheet) {
+        val currentUserName = SessionManager.userName ?: "사용자"
+        val currentUserProfileImage = R.drawable.ic_default_profile
+
+        CommentBottomSheet(
+            comments = comments,
+            onDismiss = { showCommentBottomSheet = false },
+            onCommentAdded = { comment ->
+                comments.add(comment)
+                commentCount += 1
+            },
+            onCommentDeleted = {
+                commentCount -= 1
+            },
+            currentUserName = currentUserName,
+            currentUserProfileImage = currentUserProfileImage
+        )
+    }
+}
+
+// RecordDetailScreen용 더미 댓글 데이터
+fun getDummyCommentsForRecord(): List<Comment> {
+    return listOf(
+        Comment(
+            id = 1,
+            userName = "호두왕자",
+            userProfileImage = R.drawable.ic_default_profile,
+            content = "정말 감동적인 작품이었어요! 저도 봤는데 눈물이 났습니다.",
+            timeAgo = "2분 전",
+            isReply = false,
+            parentCommentId = null,
+            mentionedUser = null,
+            isLiked = false,
+            likeCount = 3
+        ),
+        Comment(
+            id = 2,
+            userName = "쑤인",
+            userProfileImage = R.drawable.ic_default_profile,
+            content = "디어 에반 핸슨 진짜 명작이죠ㅠㅠ 'You Will Be Found' 들으면서 울었어요",
+            timeAgo = "15분 전",
+            isReply = false,
+            parentCommentId = null,
+            mentionedUser = null,
+            isLiked = true,
+            likeCount = 5
+        ),
+        Comment(
+            id = 3,
+            userName = "시새린",
+            userProfileImage = R.drawable.ic_default_profile,
+            content = "공연 리뷰 잘 읽었어요. 저도 꼭 보러 가야겠네요!",
+            timeAgo = "1시간 전",
+            isReply = false,
+            parentCommentId = null,
+            mentionedUser = null,
+            isLiked = false,
+            likeCount = 1
+        ),
+        Comment(
+            id = 4,
+            userName = "6812",
+            userProfileImage = R.drawable.ic_default_profile,
+            content = "네! 정말 좋은 공연이에요",
+            timeAgo = "50분 전",
+            isReply = true,
+            parentCommentId = 3,
+            mentionedUser = "시새린",
+            isLiked = false,
+            likeCount = 0
+        ),
+        Comment(
+            id = 5,
+            userName = "mmmuuu",
+            userProfileImage = R.drawable.ic_default_profile,
+            content = "4.5점이면 정말 좋았나보네요. 추천해주셔서 감사해요!",
+            timeAgo = "2시간 전",
+            isReply = false,
+            parentCommentId = null,
+            mentionedUser = null,
+            isLiked = false,
+            likeCount = 2
+        ),
+        Comment(
+            id = 6,
+            userName = "바바유저",
+            userProfileImage = R.drawable.ic_default_profile,
+            content = "같은 공연 봤는데 정말 공감돼요. 리뷰 잘 써주셨네요👏",
+            timeAgo = "3시간 전",
+            isReply = false,
+            parentCommentId = null,
+            mentionedUser = null,
+            isLiked = true,
+            likeCount = 4
+        )
+    )
 }
 
 @Preview(showBackground = true)

@@ -121,16 +121,65 @@ fun LoginScreen(
                         if (response.isSuccessful && response.body() != null) {
                             val message = response.body() ?: "응답 없음"
                             if (message == "로그인 성공") {
-                                SessionManager.userId = when (id) {
-                                    "user1" -> 1L
-                                    "user2" -> 2L
-                                    "admin" -> 99L
-                                    else -> 1L
+
+                                // 로그인 성공 후 사용자 정보 가져오기
+                                try {
+                                    val memberResponse = RetrofitInstance.memberApi.getMyInfo()
+                                    if (memberResponse.isSuccessful && memberResponse.body() != null) {
+                                        val memberInfo = memberResponse.body()!!
+
+                                        // 백엔드 DTO에 id 필드가 없을 수 있으므로 username 기반으로 userId 매핑
+                                        val userId = when (memberInfo.username) {
+                                            "user1" -> 1L
+                                            "user2" -> 2L
+                                            "admin" -> 99L
+                                            else -> 1L  // 기본값
+                                        }
+
+                                        // SessionManager에 사용자 정보 저장 (실제 name 사용)
+                                        SessionManager.setLoginInfo(
+                                            userId = userId,
+                                            userName = memberInfo.name  // 실제 이름 사용
+                                        )
+
+                                        Log.d("Login", "사용자 정보 저장완료 - userId: ${SessionManager.userId}, userName: ${SessionManager.userName}")
+
+                                        withContext(Dispatchers.Main) {
+                                            onLoginSuccess()
+                                        }
+                                    } else {
+                                        // 사용자 정보 가져오기 실패 시 기본값으로 설정
+                                        val userId = when (id) {
+                                            "user1" -> 1L
+                                            "user2" -> 2L
+                                            "admin" -> 99L
+                                            else -> 1L
+                                        }
+                                        SessionManager.setLoginInfo(userId, id)  // username을 name으로 사용
+
+                                        withContext(Dispatchers.Main) {
+                                            onLoginSuccess()
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e("Login", "사용자 정보 조회 실패: ${e.message}")
+                                    // 실패해도 로그인은 성공이므로 기본값으로 진행
+                                    val userId = when (id) {
+                                        "user1" -> 1L
+                                        "user2" -> 2L
+                                        "admin" -> 99L
+                                        else -> 1L
+                                    }
+                                    SessionManager.setLoginInfo(userId, id)  // username을 name으로 사용
+
+                                    withContext(Dispatchers.Main) {
+                                        onLoginSuccess()
+                                    }
                                 }
-                                Log.d("Login", "SessionManager.userId 설정됨: ${SessionManager.userId}")
-                                onLoginSuccess()
                             } else {
-                                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                }
                             }
                         } else {
                             withContext(Dispatchers.Main) {
