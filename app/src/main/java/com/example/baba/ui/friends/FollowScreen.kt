@@ -1,6 +1,7 @@
 package com.example.baba.ui.friends
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,21 +10,21 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
+import androidx.compose.ui.*
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
+import com.example.baba.R
 import com.example.baba.data.friends.FriendResponse
 import com.example.baba.data.network.RetrofitInstance
 import com.example.baba.ui.theme.Blue1
 import com.example.baba.ui.theme.CoolGray500
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FollowScreen(
     currentRoute: String,
@@ -31,6 +32,7 @@ fun FollowScreen(
     onBackClick: () -> Unit
 ) {
     var selectedTabIndex by remember { mutableStateOf(0) }
+    var showProfileScreen by remember { mutableStateOf(false) }
     var followingList by remember { mutableStateOf<List<FriendResponse>>(emptyList()) }
     var followerList by remember { mutableStateOf<List<FriendResponse>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
@@ -60,53 +62,69 @@ fun FollowScreen(
         }
     }
 
+    if (showProfileScreen) {
+        FriendProfileScreen()
+        return
+    }
+
     Scaffold(
         topBar = {
-            SmallTopAppBar(
-                title = { Box {} },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "뒤로가기")
-                    }
-                }
+            FollowTopBar(
+                selectedTabIndex = selectedTabIndex,
+                onBackClick = onBackClick
             )
         }
     ) { innerPadding ->
-        Column(modifier = Modifier.padding(innerPadding)) {
-            TabRow(
-                selectedTabIndex = selectedTabIndex,
-                indicator = { tabPositions ->
-                    TabRowDefaults.Indicator(
-                        Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
-                        color = Blue1
-                    )
-                }
-            ) {
-                tabTitles.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTabIndex == index,
-                        onClick = { selectedTabIndex = index },
-                        text = {
-                            Text(
-                                text = title,
-                                color = if (selectedTabIndex == index) Blue1 else CoolGray500,
-                                fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal
-                            )
-                        }
-                    )
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            item {
+                TabRow(
+                    selectedTabIndex = selectedTabIndex,
+                    indicator = { tabPositions ->
+                        TabRowDefaults.Indicator(
+                            Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
+                            color = Blue1
+                        )
+                    },
+                    containerColor = Color.Transparent
+                ) {
+                    tabTitles.forEachIndexed { index, title ->
+                        Tab(
+                            selected = selectedTabIndex == index,
+                            onClick = { selectedTabIndex = index },
+                            text = {
+                                Text(
+                                    text = title,
+                                    color = Blue1,
+                                    fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        )
+                    }
                 }
             }
 
             if (isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
                 }
             } else {
                 val list = if (selectedTabIndex == 0) followingList else followerList
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(list) { friend ->
-                        FriendListItem(friend = friend)
-                    }
+                items(list) { friend ->
+                    FriendListItem(
+                        friend = friend,
+                        onProfileClick = { showProfileScreen = true }
+                    )
                 }
             }
         }
@@ -114,15 +132,40 @@ fun FollowScreen(
 }
 
 @Composable
-fun FriendListItem(friend: FriendResponse) {
+fun FollowTopBar(
+    selectedTabIndex: Int,
+    onBackClick: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(onClick = onBackClick) {
+            Icon(Icons.Default.ArrowBack, contentDescription = "뒤로가기")
+        }
+    }
+}
+
+@Composable
+fun FriendListItem(
+    friend: FriendResponse,
+    onProfileClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onProfileClick() }
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Image(
-            painter = rememberAsyncImagePainter(friend.profileImageUrl ?: "https://default.url/to/profile.png"),
+            painter = if (friend.profileImageUrl != null) {
+                rememberAsyncImagePainter(friend.profileImageUrl)
+            } else {
+                painterResource(id = R.drawable.ic_default_profile)
+            },
             contentDescription = null,
             modifier = Modifier.size(40.dp)
         )
@@ -139,7 +182,7 @@ fun FriendListItem(friend: FriendResponse) {
 fun FollowScreenPreview() {
     MaterialTheme {
         FollowScreen(
-            currentRoute = "friends",   // 현재 선택된 하단 탭
+            currentRoute = "friends",
             onNavigate = {},
             onBackClick = {}
         )
