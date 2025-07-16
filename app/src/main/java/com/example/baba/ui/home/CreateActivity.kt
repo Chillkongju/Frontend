@@ -26,7 +26,7 @@ class CreateActivity : ComponentActivity() {
             BABATheme {
                 var showDetail by remember { mutableStateOf(false) }
                 var title by remember { mutableStateOf("") }
-                var rating by remember { mutableStateOf(0f) }
+                var rating by remember { mutableStateOf(0.0) }
                 var review by remember { mutableStateOf("") }
                 var location by remember { mutableStateOf("") }
                 var isPublic by remember { mutableStateOf(true) }
