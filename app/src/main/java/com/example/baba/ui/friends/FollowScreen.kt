@@ -1,6 +1,7 @@
 package com.example.baba.ui.friends
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -25,7 +26,13 @@ fun FollowScreen(
     onBackClick: () -> Unit
 ) {
     var selectedTabIndex by remember { mutableStateOf(0) }
+    var showProfileScreen by remember { mutableStateOf(false) }
     val tabTitles = listOf("팔로잉 1", "팔로워 1")
+
+    if (showProfileScreen) {
+        FriendProfileScreen()
+        return
+    }
 
     Scaffold(
         topBar = {
@@ -71,6 +78,7 @@ fun FollowScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .clickable { showProfileScreen = true }
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
