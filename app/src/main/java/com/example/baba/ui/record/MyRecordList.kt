@@ -37,7 +37,7 @@ import com.example.baba.R
 import com.example.baba.data.network.RetrofitInstance
 import com.example.baba.data.network.SessionManager
 import com.example.baba.data.record.WatchedDateManager
-import com.example.baba.ui.theme.CoolGray500
+import com.example.baba.ui.theme.*
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -108,22 +108,22 @@ fun MyRecordListScreen(category: String, navController: NavController) {
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
-                Row {
-                    IconButton(onClick = { isGridView = false }) {
-                        Icon(
-                            imageVector = Icons.Default.Build,
-                            contentDescription = "List View",
-                            tint = if (!isGridView) Color(0xFF3366FF) else Color.Gray
-                        )
-                    }
-                    IconButton(onClick = { isGridView = true }) {
-                        Icon(
-                            imageVector = Icons.Default.Star,
-                            contentDescription = "Grid View",
-                            tint = if (isGridView) Color(0xFF3366FF) else Color.Gray
-                        )
-                    }
-                }
+//                Row {
+//                    IconButton(onClick = { isGridView = false }) {
+//                        Icon(
+//                            imageVector = Icons.Default.Build,
+//                            contentDescription = "List View",
+//                            tint = if (!isGridView) Color(0xFF3366FF) else Color.Gray
+//                        )
+//                    }
+//                    IconButton(onClick = { isGridView = true }) {
+//                        Icon(
+//                            imageVector = Icons.Default.Star,
+//                            contentDescription = "Grid View",
+//                            tint = if (isGridView) Color(0xFF3366FF) else Color.Gray
+//                        )
+//                    }
+//                }
             }
         }
     ) { innerPadding ->
@@ -133,25 +133,59 @@ fun MyRecordListScreen(category: String, navController: NavController) {
                 .padding(horizontal = 16.dp)
         ) {
             Spacer(modifier = Modifier.height(8.dp))
-
-            // 카테고리 탭
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
             ) {
-                categoryName.forEachIndexed { index, name ->
-                    val isSelected = index == selected
-                    Text(
-                        text = name,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = if (isSelected) Color.White else Color.Black,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(if (isSelected) Color(0xFF3366FF) else Color(0xFFE0E0E0))
-                            .clickable { selected = index }
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
+                // 카테고리 탭
+                Row(
+                    modifier = Modifier.align(Alignment.CenterStart),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    categoryName.forEachIndexed { index, name ->
+                        val isSelected = index == selected
+                        Text(
+                            text = name,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = if (isSelected) White else CoolGray700,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(if (isSelected) Blue2 else CoolGray150)
+                                .clickable { selected = index }
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
+                }
+
+                // 리스트/그리드 버튼
+                Row(
+                    modifier = Modifier.align(Alignment.CenterEnd),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = { isGridView = false },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_list),
+                            contentDescription = "리스트 보기",
+                            modifier = Modifier.size(20.dp),
+                            tint = if (!isGridView) Blue2 else CoolGray500
+                        )
+                    }
+                    IconButton(
+                        onClick = { isGridView = true },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_grid),
+                            contentDescription = "그리드 보기",
+                            modifier = Modifier.size(20.dp),
+                            tint = if (isGridView) Blue2 else CoolGray500
+                        )
+                    }
                 }
             }
 
