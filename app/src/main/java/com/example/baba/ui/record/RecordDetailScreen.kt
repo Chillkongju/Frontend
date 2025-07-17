@@ -1,6 +1,8 @@
 package com.example.baba.ui.record
 
+import android.graphics.BitmapFactory
 import android.net.Uri
+import android.util.Base64
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -27,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -501,27 +504,67 @@ fun RecordDetailScreen(
                         .background(Color.LightGray),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (record.photoUri != null) {
-                        Image(
-                            painter = rememberAsyncImagePainter(record.photoUri),
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        // 카테고리별 아이콘 표시
-                        Image(
-                            painter = painterResource(
-                                id = when (record.category) {
-                                    "영화" -> R.drawable.recommend_movie
-                                    "도서" -> R.drawable.recommend_book
-                                    "공연" -> R.drawable.recommend_show
-                                    else -> R.drawable.ic_add
+                    when {
+                        // 1. photoUri가 있는 경우 (새로 생성한 기록)
+                        record.photoUri != null -> {
+                            Image(
+                                painter = rememberAsyncImagePainter(record.photoUri),
+                                contentDescription = record.title,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        // 2. imageBase64가 있는 경우 (서버에서 가져온 기록)
+                        !record.imageBase64.isNullOrEmpty() -> {
+                            val imageBitmap = remember(record.imageBase64) {
+                                try {
+                                    val imageBytes = Base64.decode(record.imageBase64, Base64.DEFAULT)
+                                    val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+                                    bitmap?.asImageBitmap()
+                                } catch (e: Exception) {
+                                    Log.e("ImageLoad", "Base64 이미지 로드 실패: ${e.message}")
+                                    null
                                 }
-                            ),
-                            contentDescription = "카테고리 아이콘",
-                            modifier = Modifier.size(40.dp)
-                        )
+                            }
+
+                            if (imageBitmap != null) {
+                                Image(
+                                    bitmap = imageBitmap,
+                                    contentDescription = record.title,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                // Base64 로드 실패 시 기본 아이콘
+                                Image(
+                                    painter = painterResource(
+                                        id = when (record.category) {
+                                            "영화" -> R.drawable.recommend_movie
+                                            "도서" -> R.drawable.recommend_book
+                                            "공연" -> R.drawable.recommend_show
+                                            else -> R.drawable.ic_add
+                                        }
+                                    ),
+                                    contentDescription = "카테고리 아이콘",
+                                    modifier = Modifier.size(40.dp)
+                                )
+                            }
+                        }
+                        // 3. 이미지가 없는 경우
+                        else -> {
+                            Image(
+                                painter = painterResource(
+                                    id = when (record.category) {
+                                        "영화" -> R.drawable.recommend_movie
+                                        "도서" -> R.drawable.recommend_book
+                                        "공연" -> R.drawable.recommend_show
+                                        else -> R.drawable.ic_add
+                                    }
+                                ),
+                                contentDescription = "카테고리 아이콘",
+                                modifier = Modifier.size(40.dp)
+                            )
+                        }
                     }
                 }
 
@@ -823,7 +866,8 @@ fun RecordDetailScreenPreview() {
         rating = 4.5f,
         content = "외로움 속에서 소통을 갈망하는 한 소년의 거짓말과 예상치 못한 방향으로 퍼져나가며, 따뜻하면서도 아픈 울림을 남긴다. 섬세한 감정선과 현실적인 캐릭터들이 내 이야기처럼 느껴졌고, 특히 'You Will Be Found'는 눈물 없이 들을 수 없었다. 진실 또한 왜곡될 수 있고, 그럼에도 누군가는 그 진실에 구원받을 수 있다는 메시지가 오래도록 마음에 남는다.",
         isPublic = true,
-        photoUri = null
+        photoUri = null,
+        imageBase64 = null
     )
 
     RecordDetailScreen(

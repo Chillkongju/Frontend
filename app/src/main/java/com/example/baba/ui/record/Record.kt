@@ -13,5 +13,6 @@ data class Record(
     val rating: Float,
     val content: String,
     val isPublic: Boolean,
-    val photoUri: Uri? = null
+    val photoUri: Uri? = null,
+    val imageBase64: String? = null
 ) : Parcelable

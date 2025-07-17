@@ -218,7 +218,8 @@ fun MyRecordListScreen(category: String, navController: NavController) {
                                     rating = record.rating.toFloat(),
                                     content = record.comment,
                                     isPublic = false,
-                                    photoUri = null
+                                    photoUri = null,
+                                    imageBase64 = record.image
                                 ))
                                 navController.navigate("recordDetail")
                             }
@@ -252,7 +253,8 @@ fun MyRecordListScreen(category: String, navController: NavController) {
                                     rating = record.rating.toFloat(),
                                     content = record.comment,
                                     isPublic = false,
-                                    photoUri = null
+                                    photoUri = null,
+                                    imageBase64 = record.image
                                 ))
                                 navController.navigate("recordDetail")
                             }

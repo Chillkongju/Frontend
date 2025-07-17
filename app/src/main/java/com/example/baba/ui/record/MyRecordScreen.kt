@@ -573,7 +573,8 @@ fun RecordList(
                                 rating = diary.rating.toFloat(),
                                 content = diary.content,
                                 isPublic = false,
-                                photoUri = null
+                                photoUri = null,
+                                imageBase64 = diary.image
                             )
 
                             navController.currentBackStackEntry?.savedStateHandle?.set("record", record)
@@ -734,7 +735,8 @@ fun RecordList(
                                                 rating = diary.rating.toFloat(),
                                                 content = diary.content,
                                                 isPublic = false,
-                                                photoUri = null
+                                                photoUri = null,
+                                                imageBase64 = diary.image
                                             )
 
                                             navController.currentBackStackEntry?.savedStateHandle?.set("record", record)
