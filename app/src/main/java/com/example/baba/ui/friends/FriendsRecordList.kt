@@ -1,4 +1,4 @@
-package com.example.baba.ui.record
+package com.example.baba.ui.friends
 
 import android.graphics.BitmapFactory
 import android.util.Base64
@@ -11,7 +11,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -30,61 +30,46 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
-import java.time.LocalDate
 import com.example.baba.R
 import com.example.baba.data.network.RetrofitInstance
-import com.example.baba.data.network.SessionManager
 import com.example.baba.data.record.WatchedDateManager
 import com.example.baba.ui.theme.*
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MyRecordListScreen(category: String, navController: NavController) {
+fun FriendsRecordListScreen(category: String) {
     val categoryName = listOf("전체", "도서", "영화", "공연")
     val initialIndex = categoryName.indexOf(category).takeIf { it >= 0 } ?: 0
     var selected by rememberSaveable { mutableStateOf(initialIndex) }
     var isGridView by rememberSaveable { mutableStateOf(false) }
 
     var records by remember { mutableStateOf<List<RecordData>>(emptyList()) }
-    var memberName by remember { mutableStateOf("") }
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         WatchedDateManager.initialize(context)
         try {
-            // 회원 정보 조회 (이름만 가져오기)
-            val memberResponse = RetrofitInstance.memberApi.getMyInfo()
-            if (memberResponse.isSuccessful) {
-                memberName = memberResponse.body()?.name ?: ""
-            }
-
-            // SessionManager에서 직접 userId 가져오기
-            val currentUserId = SessionManager.userId
-            if (currentUserId != null && currentUserId > 0) {
-                val diaryResponse = RetrofitInstance.diaryApi.getAllMyDiaries(userId = currentUserId)
-                if (diaryResponse.isSuccessful) {
-                    val diaries = diaryResponse.body() ?: emptyList()
-                    records = diaries.map {
-                        RecordData(
-                            id = it.id,
-                            title = it.title,
-                            category = when (it.category) {
-                                "BOOK" -> "도서"
-                                "MOVIE" -> "영화"
-                                "PERFORMANCE" -> "공연"
-                                else -> "기타"
-                            },
-                            rating = it.rating.toString(),
-                            date = WatchedDateManager.getWatchedDate(it.id)
-                                ?.format(DateTimeFormatter.ISO_LOCAL_DATE)
-                                ?: it.createdDate.split(" ")[0],
-                            comment = it.content,
-                            image = it.image
-                        )
-                    }
+            val response = RetrofitInstance.diaryApi.getAllMyDiaries(userId = 1L) // 사용자 ID는 필요 시 변경
+            if (response.isSuccessful) {
+                val diaries = response.body() ?: emptyList()
+                records = diaries.map {
+                    RecordData(
+                        id = it.id,
+                        title = it.title,
+                        category = when (it.category) {
+                            "BOOK" -> "도서"
+                            "MOVIE" -> "영화"
+                            "PERFORMANCE" -> "공연"
+                            else -> "기타"
+                        },
+                        rating = it.rating.toString(),
+                        date = WatchedDateManager.getWatchedDate(it.id)
+                            ?.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                            ?: it.createdDate.split(" ")[0],
+                        comment = it.content,
+                        image = it.image
+                    )
                 }
             }
         } catch (e: Exception) {
@@ -104,26 +89,11 @@ fun MyRecordListScreen(category: String, navController: NavController) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = if (memberName.isNotEmpty()) "$memberName’s" else "",
+                    text = "칠공주's",
                     fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.align(Alignment.CenterVertically)
                 )
-//                Row {
-//                    IconButton(onClick = { isGridView = false }) {
-//                        Icon(
-//                            imageVector = Icons.Default.Build,
-//                            contentDescription = "List View",
-//                            tint = if (!isGridView) Color(0xFF3366FF) else Color.Gray
-//                        )
-//                    }
-//                    IconButton(onClick = { isGridView = true }) {
-//                        Icon(
-//                            imageVector = Icons.Default.Star,
-//                            contentDescription = "Grid View",
-//                            tint = if (isGridView) Color(0xFF3366FF) else Color.Gray
-//                        )
-//                    }
-//                }
             }
         }
     ) { innerPadding ->
@@ -209,19 +179,7 @@ fun MyRecordListScreen(category: String, navController: NavController) {
                                 .fillMaxWidth()
                                 .aspectRatio(0.7f)
                                 .clip(RoundedCornerShape(8.dp)),
-                            onClick = {
-                                navController.currentBackStackEntry?.savedStateHandle?.set("record", Record(
-                                    id = record.id,
-                                    title = record.title,
-                                    date = record.date,
-                                    category = record.category,
-                                    rating = record.rating.toFloat(),
-                                    content = record.comment,
-                                    isPublic = false,
-                                    photoUri = null
-                                ))
-                                navController.navigate("recordDetail")
-                            }
+                            onClick = {}
                         )
                     }
                 }
@@ -240,20 +198,7 @@ fun MyRecordListScreen(category: String, navController: NavController) {
                             rating = record.rating,
                             date = record.date,
                             comment = record.comment,
-                            imageBase64 = record.image,
-                            onClick = {
-                                navController.currentBackStackEntry?.savedStateHandle?.set("record", Record(
-                                    id = record.id,
-                                    title = record.title,
-                                    date = record.date,
-                                    category = record.category,
-                                    rating = record.rating.toFloat(),
-                                    content = record.comment,
-                                    isPublic = false,
-                                    photoUri = null
-                                ))
-                                navController.navigate("recordDetail")
-                            }
+                            imageBase64 = record.image
                         )
                     }
                 }
@@ -292,7 +237,8 @@ fun GridImageItem(
             .size(72.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(Color.LightGray)
-            .clickable { onClick() }
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
     ) {
         if (imageBitmap != null) {
             // 이미지가 있을 때는 이미지만 표시
@@ -303,36 +249,17 @@ fun GridImageItem(
                 contentScale = ContentScale.Crop
             )
         } else {
-            // 카테고리 아이콘
-            Image(
-                painter = painterResource(
-                    id = when (category) {
-                        "도서" -> R.drawable.recommend_book
-                        "영화" -> R.drawable.recommend_movie
-                        "공연" -> R.drawable.recommend_show
-                        else -> R.drawable.ic_add
-                    }
-                ),
-                contentDescription = "카테고리 아이콘",
-                modifier = Modifier
-                    .size(45.dp)
-                    .align(Alignment.Center)
-            )
-
-            // 제목
             Text(
                 text = title,
-                color = CoolGray500,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                color = Color.Gray,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.Center,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-                    .offset(y = (-16).dp)
-                    .padding(horizontal = 4.dp)
+                    .padding(6.dp)
+                    .fillMaxWidth(),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -357,89 +284,113 @@ fun RecordItem(
     date: String,
     comment: String,
     imageBase64: String?,
-    onClick: () -> Unit
+    onClick: () -> Unit = {}
 ) {
-    val context = LocalContext.current
-
-    LaunchedEffect(Unit) {
-        WatchedDateManager.initialize(context)
-    }
+    val imageBitmap = rememberBase64Image(imageBase64)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
+            .padding(vertical = 5.dp),
+        verticalAlignment = Alignment.Top
     ) {
-        val imageBitmap = rememberBase64Image(imageBase64)
-
+        // 썸네일 이미지
         Box(
             modifier = Modifier
-                .size(72.dp)
+                .size(width = 72.dp, height = 100.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(Color.LightGray)
+                .background(Color.LightGray),
+            contentAlignment = Alignment.Center
         ) {
             if (imageBitmap != null) {
                 Image(
                     bitmap = imageBitmap,
-                    contentDescription = "Thumbnail",
+                    contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
             } else {
-                Box(
+                Text(
+                    text = title,
+                    color = Color.Gray,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.Center,
                     modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.LightGray),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Image(
-                        painter = painterResource(
-                            id = when (category) {
-                                "도서" -> R.drawable.recommend_book
-                                "영화" -> R.drawable.recommend_movie
-                                "공연" -> R.drawable.recommend_show
-                                else -> R.drawable.ic_add
-                            }
-                        ),
-                        contentDescription = "카테고리 아이콘",
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+                        .padding(6.dp)
+                        .fillMaxWidth(),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        Column(
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = title, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(text = category, fontSize = 12.sp, color = Color.Gray)
+        // 텍스트 영역
+        Column(modifier = Modifier.weight(1f)) {
+            // 제목 + 카테고리
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = category,
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
             }
 
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // 별점 + 날짜
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    Icons.Default.Star,
+                    imageVector = Icons.Default.Star,
                     contentDescription = null,
                     tint = Color(0xFF1E88E5),
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(14.dp)
                 )
+                Spacer(modifier = Modifier.width(4.dp))
                 Text(text = rating, fontSize = 12.sp)
-                Spacer(modifier = Modifier.width(8.dp))
-
-                val watchedDate = WatchedDateManager.getWatchedDate(id)
-                    ?.format(DateTimeFormatter.ISO_LOCAL_DATE)
-                    ?: date
-
-                Text(text = watchedDate, fontSize = 12.sp)
-
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(text = date, fontSize = 12.sp, color = Color.Gray)
             }
 
-            if (comment.isNotBlank()) {
-                Text(text = comment, fontSize = 12.sp)
-            }
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // 코멘트
+            Text(
+                text = comment,
+                fontSize = 12.sp,
+                color = Color.Gray,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        // 더보기 아이콘
+        IconButton(
+            onClick = { /* TODO: Show options */ },
+            modifier = Modifier.size(24.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.MoreVert,
+                contentDescription = "더보기",
+                tint = Color.Gray
+            )
         }
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun MyRecordListPreview() {
+    FriendsRecordListScreen(category = "전체")
 }
