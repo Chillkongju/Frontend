@@ -122,9 +122,9 @@ fun FriendsScreen(navController: NavController? = null) {
     val feedPosts = listOf(
         FeedPost(
             id = 1,
-            userName = "호두왕자",
+            userName = "정윤희",
             userProfileImage = R.drawable.ic_default_profile,
-            timeAgo = "2분 전",
+            timeAgo = "10분 전",
             date = "2025.07.14.",
             contentTitle = "알라딘",
             contentCategory = "영화",
@@ -137,9 +137,9 @@ fun FriendsScreen(navController: NavController? = null) {
         ),
         FeedPost(
             id = 2,
-            userName = "쑤인",
+            userName = "정윤희",
             userProfileImage = R.drawable.ic_default_profile,
-            timeAgo = "8분 전",
+            timeAgo = "30분 전",
             date = "2025.07.08.",
             contentTitle = "해피엔드",
             contentCategory = "영화",
@@ -152,7 +152,7 @@ fun FriendsScreen(navController: NavController? = null) {
         ),
         FeedPost(
             id = 3,
-            userName = "시새린",
+            userName = "양서영",
             userProfileImage = R.drawable.ic_default_profile,
             timeAgo = "2시간 전",
             date = "2025.07.01.",
@@ -167,7 +167,7 @@ fun FriendsScreen(navController: NavController? = null) {
         ),
         FeedPost(
             id = 4,
-            userName = "mmmuuu",
+            userName = "양서영",
             userProfileImage = R.drawable.ic_default_profile,
             timeAgo = "9시간 전",
             date = "2025.06.29.",
@@ -176,7 +176,7 @@ fun FriendsScreen(navController: NavController? = null) {
             contentYear = "2023",
             contentImage = R.drawable.friend_show_poster_1,
             rating = 4.5,
-            reviewText = "읽는 내내 꿈속에서 살고 있는 듯한 느낌이 들었다",
+            reviewText = "인생작!!! 또 보고 싶당",
             likes = 2,
             comments = 10
         )
@@ -504,53 +504,32 @@ fun FeedPostCard(
             }
         }
 
-        // 좋아요 및 댓글
+        // 좋아요 및 댓글 아이콘만 (개수 표시 없음)
         Row(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                CompositionLocalProvider(LocalContentColor provides Color.Unspecified) {
-                    Icon(
-                        painter = painterResource(
-                            id = if (isLiked) R.drawable.ic_like_filled else R.drawable.ic_like_outline
-                        ),
-                        contentDescription = "좋아요",
-                        modifier = Modifier
-                            .size(16.dp)
-                            .clickable {
-                                onLikeClick(post.id)
-                            }
-                    )
-                }
-
-                Text(
-                    text = likeCount.toString(),
-                    fontSize = 12.sp,
-                    color = CoolGray700
+            CompositionLocalProvider(LocalContentColor provides Color.Unspecified) {
+                Icon(
+                    painter = painterResource(
+                        id = if (isLiked) R.drawable.ic_like_filled else R.drawable.ic_like_outline
+                    ),
+                    contentDescription = "좋아요",
+                    modifier = Modifier
+                        .size(16.dp)
+                        .clickable {
+                            onLikeClick(post.id)
+                        }
                 )
             }
 
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                CompositionLocalProvider(LocalContentColor provides Color.Unspecified) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_comment),
-                        contentDescription = "댓글",
-                        modifier = Modifier
-                            .size(16.dp)
-                            .clickable { onCommentClick() }
-                    )
-                }
-                Text(
-                    text = post.comments.toString(),
-                    fontSize = 12.sp,
-                    color = CoolGray700
+            CompositionLocalProvider(LocalContentColor provides Color.Unspecified) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_comment),
+                    contentDescription = "댓글",
+                    modifier = Modifier
+                        .size(16.dp)
+                        .clickable { onCommentClick() }
                 )
             }
         }

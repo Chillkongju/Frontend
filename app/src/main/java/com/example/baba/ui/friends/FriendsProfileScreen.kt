@@ -54,6 +54,7 @@ fun FriendProfileScreen(
         return when (username) {
             "user1" -> "김민지"
             "user2" -> "정윤희"
+            "user3" -> "양서영"
             "admin" -> "관리자"
             else -> username
         }

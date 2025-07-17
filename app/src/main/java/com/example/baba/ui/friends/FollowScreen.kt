@@ -99,8 +99,9 @@ fun FollowScreen(
                     try {
                         // 하드코딩으로 username을 name으로 매핑
                         val displayName = when (username) {
-                            "user2" -> "정윤희"
                             "user1" -> "김민지"
+                            "user2" -> "정윤희"
+                            "user3" -> "양서영"
                             "admin" -> "관리자"
                             else -> username
                         }
@@ -133,8 +134,9 @@ fun FollowScreen(
                     try {
                         // 하드코딩으로 username을 name으로 매핑
                         val displayName = when (username) {
-                            "user2" -> "정윤희"
                             "user1" -> "김민지"
+                            "user2" -> "정윤희"
+                            "user3" -> "양서영"
                             "admin" -> "관리자"
                             else -> username
                         }
@@ -280,8 +282,9 @@ fun FollowScreen(
                                                 val followingMembers = mutableListOf<MemberInfoResponse>()
                                                 for (username in followingUsernameList) {
                                                     val displayName = when (username) {
-                                                        "user2" -> "정윤희"
                                                         "user1" -> "김민지"
+                                                        "user2" -> "정윤희"
+                                                        "user3" -> "양서영"
                                                         "admin" -> "관리자"
                                                         else -> username
                                                     }
@@ -306,8 +309,9 @@ fun FollowScreen(
                                                 val followerMembers = mutableListOf<MemberInfoResponse>()
                                                 for (username in followerUsernameList) {
                                                     val displayName = when (username) {
-                                                        "user2" -> "정윤희"
                                                         "user1" -> "김민지"
+                                                        "user2" -> "정윤희"
+                                                        "user3" -> "양서영"
                                                         "admin" -> "관리자"
                                                         else -> username
                                                     }
