@@ -133,6 +133,7 @@ fun LoginScreen(
                                         val userId = when (memberInfo.username) {
                                             "user1" -> 1L
                                             "user2" -> 2L
+                                            "user3" -> 3L
                                             "admin" -> 99L
                                             else -> 1L  // 기본값
                                         }
@@ -154,6 +155,7 @@ fun LoginScreen(
                                         val userId = when (id) {
                                             "user1" -> 1L
                                             "user2" -> 2L
+                                            "user3" -> 3L
                                             "admin" -> 99L
                                             else -> 1L
                                         }
@@ -174,6 +176,7 @@ fun LoginScreen(
                                     val userId = when (id) {
                                         "user1" -> 1L
                                         "user2" -> 2L
+                                        "user3" -> 3L
                                         "admin" -> 99L
                                         else -> 1L
                                     }
