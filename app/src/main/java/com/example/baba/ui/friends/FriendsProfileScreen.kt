@@ -46,6 +46,8 @@ fun FriendProfileScreen(
     val scope = rememberCoroutineScope()
     val bottomSheetState = rememberModalBottomSheetState()
     var showBottomSheet by remember { mutableStateOf(false) }
+    var showRecordList by remember { mutableStateOf(false) }
+    var selectedCategory by remember { mutableStateOf("전체") }
     val context = LocalContext.current
 
     fun getUserDisplayName(username: String): String {
@@ -55,6 +57,15 @@ fun FriendProfileScreen(
             "admin" -> "관리자"
             else -> username
         }
+    }
+
+    // FriendsRecordListScreen 표시
+    if (showRecordList) {
+        FriendsRecordListScreen(
+            category = selectedCategory,
+            targetMember = targetMember
+        )
+        return
     }
 
     LaunchedEffect(Unit) {
@@ -189,11 +200,12 @@ fun FriendProfileScreen(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text ="$displayName's",
+                        text = "$displayName's",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = TextBlack
-                        ) },
+                    )
+                },
                 windowInsets = WindowInsets(0.dp),
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
@@ -283,8 +295,12 @@ fun FriendProfileScreen(
                     selectedTabIndex = 0,
                     onTabClick = { /* TODO */ },
                     onPeriodClick = { /* TODO */ },
-                    selectedCategory = 0,
-                    onCategoryClick = { /* TODO */ }
+                    selectedCategory = listOf("전체", "도서", "영화", "공연").indexOf(selectedCategory),
+                    onCategoryClick = { index ->
+                        val categoryName = listOf("전체", "도서", "영화", "공연")
+                        selectedCategory = categoryName[index]
+                        showRecordList = true
+                    }
                 )
             }
 

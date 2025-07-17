@@ -31,6 +31,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.baba.R
+import com.example.baba.data.member.MemberInfoResponse
 import com.example.baba.data.network.RetrofitInstance
 import com.example.baba.data.record.WatchedDateManager
 import com.example.baba.ui.theme.*
@@ -38,7 +39,10 @@ import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FriendsRecordListScreen(category: String) {
+fun FriendsRecordListScreen(
+    category: String,
+    targetMember: MemberInfoResponse? = null
+) {
     val categoryName = listOf("전체", "도서", "영화", "공연")
     val initialIndex = categoryName.indexOf(category).takeIf { it >= 0 } ?: 0
     var selected by rememberSaveable { mutableStateOf(initialIndex) }
@@ -47,31 +51,22 @@ fun FriendsRecordListScreen(category: String) {
     var records by remember { mutableStateOf<List<RecordData>>(emptyList()) }
     val context = LocalContext.current
 
+    // username을 실제 이름으로 매핑하는 함수
+    fun getUserDisplayName(username: String): String {
+        return when (username) {
+            "user1" -> "김민지"
+            "user2" -> "정윤희"
+            "admin" -> "관리자"
+            else -> username
+        }
+    }
+
     LaunchedEffect(Unit) {
         WatchedDateManager.initialize(context)
         try {
-            val response = RetrofitInstance.diaryApi.getAllMyDiaries(userId = 1L) // 사용자 ID는 필요 시 변경
-            if (response.isSuccessful) {
-                val diaries = response.body() ?: emptyList()
-                records = diaries.map {
-                    RecordData(
-                        id = it.id,
-                        title = it.title,
-                        category = when (it.category) {
-                            "BOOK" -> "도서"
-                            "MOVIE" -> "영화"
-                            "PERFORMANCE" -> "공연"
-                            else -> "기타"
-                        },
-                        rating = it.rating.toString(),
-                        date = WatchedDateManager.getWatchedDate(it.id)
-                            ?.format(DateTimeFormatter.ISO_LOCAL_DATE)
-                            ?: it.createdDate.split(" ")[0],
-                        comment = it.content,
-                        image = it.image
-                    )
-                }
-            }
+            // TODO: 실제 친구의 기록 데이터를 가져오는 API 호출
+            // 현재는 빈 리스트로 설정
+            records = emptyList()
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -89,7 +84,7 @@ fun FriendsRecordListScreen(category: String) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "칠공주's",
+                    text = targetMember?.let { getUserDisplayName(it.username) + "'s" } ?: "친구's",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.align(Alignment.CenterVertically)
