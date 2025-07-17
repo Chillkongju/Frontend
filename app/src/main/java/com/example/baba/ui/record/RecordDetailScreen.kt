@@ -57,6 +57,16 @@ import kotlinx.coroutines.withContext
 import java.time.format.DateTimeFormatter
 import java.time.LocalDateTime
 
+fun getUserDisplayName(username: String): String {
+    return when (username) {
+        "user1" -> "김민지"
+        "user2" -> "정윤희"
+        "user3" -> "양서영"
+        "admin" -> "관리자"
+        else -> username
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecordDetailScreen(
@@ -100,7 +110,7 @@ fun RecordDetailScreen(
                 val uiComments = commentDtos.map { dto ->
                     Comment(
                         id = dto.id.toInt(),
-                        userName = dto.username,
+                        userName = getUserDisplayName(dto.username), // username을 displayName으로 변환
                         userProfileImage = R.drawable.ic_default_profile,
                         content = dto.content,
                         timeAgo = formatTimeAgo(dto.createdAt),
@@ -135,15 +145,15 @@ fun RecordDetailScreen(
                 val commentDtos = response.body() ?: emptyList()
                 Log.d("RecordDetail", "댓글 조회 성공: ${commentDtos.size}개")
 
-                // 백엔드 DTO를 UI Comment 모델로 변환
+                // 백엔드 DTO를 UI Comment 모델로 변환 - username을 displayName으로 변환
                 val uiComments = commentDtos.map { dto ->
                     Comment(
                         id = dto.id.toInt(),
-                        userName = dto.username,
+                        userName = getUserDisplayName(dto.username), // username을 displayName으로 변환
                         userProfileImage = R.drawable.ic_default_profile,
                         content = dto.content,
                         timeAgo = formatTimeAgo(dto.createdAt),
-                        isReply = false, // 백엔드에서 답글 기능이 없으므로 false
+                        isReply = false,
                         parentCommentId = null,
                         mentionedUser = null,
                         isLiked = false,
@@ -162,6 +172,7 @@ fun RecordDetailScreen(
             isLoadingComments = false
         }
     }
+
 
     // 좋아요 상태 초기화
     LaunchedEffect(record.id) {
@@ -792,7 +803,7 @@ fun RecordDetailScreen(
                                     val uiComments = commentDtos.map { dto ->
                                         Comment(
                                             id = dto.id.toInt(),
-                                            userName = dto.username,
+                                            userName = getUserDisplayName(dto.username), // username을 displayName으로 변환
                                             userProfileImage = R.drawable.ic_default_profile,
                                             content = dto.content,
                                             timeAgo = formatTimeAgo(dto.createdAt),
