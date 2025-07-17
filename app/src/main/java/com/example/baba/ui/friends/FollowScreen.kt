@@ -21,7 +21,10 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.baba.R
 import com.example.baba.data.member.MemberInfoResponse
 import com.example.baba.data.network.RetrofitInstance
+import com.example.baba.data.network.SessionManager
 import com.example.baba.ui.theme.Blue1
+import kotlinx.coroutines.launch
+import android.util.Log
 
 @Composable
 fun FollowScreen(
@@ -31,21 +34,151 @@ fun FollowScreen(
 ) {
     var selectedTabIndex by remember { mutableStateOf(0) }
     var showProfileScreen by remember { mutableStateOf(false) }
+    var selectedMember by remember { mutableStateOf<MemberInfoResponse?>(null) }
+    var followingUsernameList by remember { mutableStateOf<List<String>>(emptyList()) }
+    var followerUsernameList by remember { mutableStateOf<List<String>>(emptyList()) }
     var followingList by remember { mutableStateOf<List<MemberInfoResponse>>(emptyList()) }
     var followerList by remember { mutableStateOf<List<MemberInfoResponse>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
     var currentUsername by remember { mutableStateOf("") }
+
     val coroutineScope = rememberCoroutineScope()
 
+    // 사용자 정보 가져오기
     LaunchedEffect(Unit) {
         try {
-            val memberResponse = RetrofitInstance.memberApi.getMyInfo()
-            if (memberResponse.isSuccessful && memberResponse.body() != null) {
-                currentUsername = memberResponse.body()!!.username
+            Log.d("FollowScreen", "사용자 정보 조회 시작")
+
+            // 먼저 SessionManager에서 확인
+            val sessionUsername = SessionManager.username
+            Log.d("FollowScreen", "SessionManager username: $sessionUsername")
+            Log.d("FollowScreen", "SessionManager userId: ${SessionManager.userId}")
+            Log.d("FollowScreen", "SessionManager userName: ${SessionManager.userName}")
+
+            if (!sessionUsername.isNullOrEmpty()) {
+                currentUsername = sessionUsername
+                Log.d("FollowScreen", "SessionManager에서 username 설정: $currentUsername")
+            } else {
+                // SessionManager에 없으면 API 호출
+                Log.d("FollowScreen", "SessionManager에 username이 없어서 API 호출")
+                val memberResponse = RetrofitInstance.memberApi.getMyInfo()
+                if (memberResponse.isSuccessful && memberResponse.body() != null) {
+                    currentUsername = memberResponse.body()!!.username
+                    Log.d("FollowScreen", "API에서 가져온 username: $currentUsername")
+                } else {
+                    Log.e("FollowScreen", "사용자 정보 조회 실패: ${memberResponse.code()}")
+                    Log.e("FollowScreen", "응답 body: ${memberResponse.errorBody()?.string()}")
+                    errorMessage = "사용자 정보를 가져올 수 없습니다"
+                }
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("FollowScreen", "사용자 정보 조회 오류: ${e.message}", e)
+            errorMessage = "네트워크 오류가 발생했습니다"
         }
+    }
+
+    // 팔로워/팔로잉 목록 로드
+    LaunchedEffect(currentUsername) {
+        if (currentUsername.isNotEmpty()) {
+            isLoading = true
+            errorMessage = null
+
+            Log.d("FollowScreen", "팔로잉/팔로워 목록 조회 시작 - username: $currentUsername")
+
+            try {
+                // 팔로잉 목록 조회 (username 리스트)
+                Log.d("FollowScreen", "팔로잉 목록 API 호출 중...")
+                val followingResponse = RetrofitInstance.friendsApi.getFollowingList(currentUsername)
+                followingUsernameList = followingResponse
+                Log.d("FollowScreen", "팔로잉 username 목록 조회 성공: ${followingUsernameList.size}명")
+
+                // 각 username으로 MemberInfo 조회
+                val followingMembers = mutableListOf<MemberInfoResponse>()
+                for (username in followingUsernameList) {
+                    try {
+                        // 하드코딩으로 username을 name으로 매핑
+                        val displayName = when (username) {
+                            "user2" -> "정윤희"
+                            "user1" -> "김민지"
+                            "admin" -> "관리자"
+                            else -> username
+                        }
+
+                        val memberInfo = MemberInfoResponse(
+                            id = username.hashCode().toLong(),
+                            username = username,
+                            name = displayName,
+                            profileImageUrl = null,
+                            bio = "안녕하세요!",
+                            preference = null,
+                            link = null
+                        )
+                        followingMembers.add(memberInfo)
+                    } catch (e: Exception) {
+                        Log.e("FollowScreen", "멤버 정보 조회 실패: $username, ${e.message}")
+                    }
+                }
+                followingList = followingMembers
+
+                // 팔로워 목록 조회 (username 리스트)
+                Log.d("FollowScreen", "팔로워 목록 API 호출 중...")
+                val followerResponse = RetrofitInstance.friendsApi.getFollowerList(currentUsername)
+                followerUsernameList = followerResponse
+                Log.d("FollowScreen", "팔로워 username 목록 조회 성공: ${followerUsernameList.size}명")
+
+                // 각 username으로 MemberInfo 조회
+                val followerMembers = mutableListOf<MemberInfoResponse>()
+                for (username in followerUsernameList) {
+                    try {
+                        // 하드코딩으로 username을 name으로 매핑
+                        val displayName = when (username) {
+                            "user2" -> "정윤희"
+                            "user1" -> "김민지"
+                            "admin" -> "관리자"
+                            else -> username
+                        }
+
+                        val memberInfo = MemberInfoResponse(
+                            id = username.hashCode().toLong(),
+                            username = username,
+                            name = displayName,
+                            profileImageUrl = null,
+                            bio = "안녕하세요!",
+                            preference = null,
+                            link = null
+                        )
+                        followerMembers.add(memberInfo)
+                    } catch (e: Exception) {
+                        Log.e("FollowScreen", "멤버 정보 조회 실패: $username, ${e.message}")
+                    }
+                }
+                followerList = followerMembers
+
+                Log.d("FollowScreen", "최종 팔로잉 리스트: ${followingList.size}명")
+                Log.d("FollowScreen", "최종 팔로워 리스트: ${followerList.size}명")
+
+            } catch (e: Exception) {
+                Log.e("FollowScreen", "팔로잉/팔로워 목록 조회 오류: ${e.message}", e)
+                errorMessage = "목록을 불러오는데 실패했습니다: ${e.message}"
+            } finally {
+                isLoading = false
+                Log.d("FollowScreen", "로딩 완료 - isLoading: false")
+            }
+        } else {
+            Log.w("FollowScreen", "currentUsername이 비어있어서 API 호출 안함")
+        }
+    }
+
+    if (showProfileScreen && selectedMember != null) {
+        FriendProfileScreen(
+            targetMember = selectedMember,
+            onBackClick = {
+                showProfileScreen = false
+                selectedMember = null
+            }
+        )
+        return
     }
 
     // 탭 타이틀 동적 생성
@@ -53,29 +186,6 @@ fun FollowScreen(
         "팔로잉 ${followingList.size}",
         "팔로워 ${followerList.size}"
     )
-
-    // API 호출
-    LaunchedEffect(currentUsername) {
-        if (currentUsername.isNotEmpty()) {
-            isLoading = true
-            try {
-                val followingResponse = RetrofitInstance.friendsApi.getFollowingList(currentUsername)
-                followingList = followingResponse
-
-                val followerResponse = RetrofitInstance.friendsApi.getFollowerList(currentUsername)
-                followerList = followerResponse
-            } catch (e: Exception) {
-                e.printStackTrace()
-            } finally {
-                isLoading = false
-            }
-        }
-    }
-
-    if (showProfileScreen) {
-        FriendProfileScreen()
-        return
-    }
 
     Scaffold(
         topBar = {
@@ -85,56 +195,184 @@ fun FollowScreen(
             )
         }
     ) { innerPadding ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            item {
-                TabRow(
-                    selectedTabIndex = selectedTabIndex,
-                    indicator = { tabPositions ->
-                        TabRowDefaults.Indicator(
-                            Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
-                            color = Blue1
-                        )
-                    },
-                    containerColor = Color.Transparent
-                ) {
-                    tabTitles.forEachIndexed { index, title ->
-                        Tab(
-                            selected = selectedTabIndex == index,
-                            onClick = { selectedTabIndex = index },
-                            text = {
-                                Text(
-                                    text = title,
-                                    color = Blue1,
-                                    fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal
-                                )
-                            }
-                        )
-                    }
+            // 탭 행
+            TabRow(
+                selectedTabIndex = selectedTabIndex,
+                indicator = { tabPositions ->
+                    TabRowDefaults.Indicator(
+                        Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
+                        color = Blue1
+                    )
+                },
+                containerColor = Color.Transparent
+            ) {
+                tabTitles.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onClick = { selectedTabIndex = index },
+                        text = {
+                            Text(
+                                text = title,
+                                color = Blue1,
+                                fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    )
                 }
             }
 
-            if (isLoading) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
+            // 컨텐츠 영역
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .weight(1f)
+            ) {
+                when {
+                    isLoading -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                CircularProgressIndicator()
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "목록을 불러오는 중...",
+                                    fontSize = 14.sp,
+                                    color = Color.Gray
+                                )
+                            }
+                        }
                     }
-                }
-            } else {
-                val list = if (selectedTabIndex == 0) followingList else followerList
-                items(list) { member ->
-                    FriendListItem(
-                        member = member,
-                        onProfileClick = { showProfileScreen = true }
-                    )
+
+                    errorMessage != null -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = errorMessage!!,
+                                    fontSize = 16.sp,
+                                    color = Color.Red
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Button(
+                                    onClick = {
+                                        // 재시도
+                                        coroutineScope.launch {
+                                            isLoading = true
+                                            errorMessage = null
+                                            try {
+                                                // 팔로잉 목록 재조회
+                                                val followingResponse = RetrofitInstance.friendsApi.getFollowingList(currentUsername)
+                                                followingUsernameList = followingResponse
+
+                                                val followingMembers = mutableListOf<MemberInfoResponse>()
+                                                for (username in followingUsernameList) {
+                                                    val displayName = when (username) {
+                                                        "user2" -> "정윤희"
+                                                        "user1" -> "김민지"
+                                                        "admin" -> "관리자"
+                                                        else -> username
+                                                    }
+
+                                                    val memberInfo = MemberInfoResponse(
+                                                        id = username.hashCode().toLong(),
+                                                        username = username,
+                                                        name = displayName,
+                                                        profileImageUrl = null,
+                                                        bio = "안녕하세요!",
+                                                        preference = null,
+                                                        link = null
+                                                    )
+                                                    followingMembers.add(memberInfo)
+                                                }
+                                                followingList = followingMembers
+
+                                                // 팔로워 목록 재조회
+                                                val followerResponse = RetrofitInstance.friendsApi.getFollowerList(currentUsername)
+                                                followerUsernameList = followerResponse
+
+                                                val followerMembers = mutableListOf<MemberInfoResponse>()
+                                                for (username in followerUsernameList) {
+                                                    val displayName = when (username) {
+                                                        "user2" -> "정윤희"
+                                                        "user1" -> "김민지"
+                                                        "admin" -> "관리자"
+                                                        else -> username
+                                                    }
+
+                                                    val memberInfo = MemberInfoResponse(
+                                                        id = username.hashCode().toLong(),
+                                                        username = username,
+                                                        name = displayName,
+                                                        profileImageUrl = null,
+                                                        bio = "안녕하세요!",
+                                                        preference = null,
+                                                        link = null
+                                                    )
+                                                    followerMembers.add(memberInfo)
+                                                }
+                                                followerList = followerMembers
+
+                                            } catch (e: Exception) {
+                                                errorMessage = "목록을 불러오는데 실패했습니다"
+                                            } finally {
+                                                isLoading = false
+                                            }
+                                        }
+                                    }
+                                ) {
+                                    Text("다시 시도")
+                                }
+                            }
+                        }
+                    }
+
+                    else -> {
+                        val currentList = if (selectedTabIndex == 0) followingList else followerList
+                        Log.d("FollowScreen", "UI 렌더링 - selectedTabIndex: $selectedTabIndex, currentList.size: ${currentList.size}")
+
+                        if (currentList.isEmpty()) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = if (selectedTabIndex == 0) "팔로잉한 사용자가 없습니다" else "팔로워가 없습니다",
+                                    fontSize = 16.sp,
+                                    color = Color.Gray
+                                )
+                            }
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(vertical = 8.dp)
+                            ) {
+                                items(currentList) { member ->
+                                    Log.d("FollowScreen", "렌더링 중인 멤버: ${member.name}")
+                                    FriendListItem(
+                                        member = member,
+                                        onProfileClick = {
+                                            Log.d("FollowScreen", "프로필 클릭: ${member.name}")
+                                            selectedMember = member
+                                            showProfileScreen = true
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -155,6 +393,13 @@ fun FollowTopBar(
         IconButton(onClick = onBackClick) {
             Icon(Icons.Default.ArrowBack, contentDescription = "뒤로가기")
         }
+
+        Text(
+            text = "팔로우",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(start = 8.dp)
+        )
     }
 }
 
@@ -170,27 +415,49 @@ fun FriendListItem(
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Image(
-            painter = if (member.profileImageUrl != null) {
-                rememberAsyncImagePainter(member.profileImageUrl)
+        // 프로필 이미지
+        Box(
+            modifier = Modifier.size(48.dp)
+        ) {
+            if (member.profileImageUrl != null) {
+                Image(
+                    painter = rememberAsyncImagePainter(member.profileImageUrl),
+                    contentDescription = "프로필 이미지",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .aspectRatio(1f)
+                )
             } else {
-                painterResource(id = R.drawable.ic_default_profile)
-            },
-            contentDescription = null,
-            modifier = Modifier.size(40.dp)
-        )
+                Image(
+                    painter = painterResource(id = R.drawable.ic_default_profile),
+                    contentDescription = "기본 프로필",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .aspectRatio(1f)
+                )
+            }
+        }
+
         Spacer(modifier = Modifier.width(12.dp))
-        Column {
+
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
             Text(
                 text = member.name,
                 fontWeight = FontWeight.Medium,
                 fontSize = 16.sp
             )
-            Text(
-                text = member.username,
-                fontSize = 12.sp,
-                color = Color.Gray
-            )
+
+            // bio가 있으면 표시
+            if (!member.bio.isNullOrEmpty()) {
+                Text(
+                    text = member.bio,
+                    fontSize = 14.sp,
+                    color = Color.Gray,
+                    maxLines = 1
+                )
+            }
         }
     }
 }

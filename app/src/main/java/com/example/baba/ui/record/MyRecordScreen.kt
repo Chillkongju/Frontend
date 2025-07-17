@@ -1,12 +1,13 @@
 package com.example.baba.ui.record
 
-import android.content.Intent
 import android.graphics.BitmapFactory
 import android.util.Base64
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,10 +19,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -35,13 +37,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberAsyncImagePainter
-import com.example.baba.MainActivity
 import com.example.baba.R
 import com.example.baba.data.member.MemberInfoResponse
 import com.example.baba.data.network.PersistentSessionManager
 import com.example.baba.data.network.SessionManager
 import com.example.baba.data.record.WatchedDateManager
 import com.example.baba.ui.friends.FollowScreen
+import com.example.baba.ui.theme.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -130,6 +132,7 @@ fun MyRecordScreen(navController: NavController, onLogout: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyRecordMainContent(
     onCategoryClick: (String) -> Unit,
@@ -138,7 +141,6 @@ fun MyRecordMainContent(
     onLogout: () -> Unit
 ) {
     var categoryCounts by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
-
     var memberInfo by remember { mutableStateOf<MemberInfoResponse?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     val coroutineScope = rememberCoroutineScope()
@@ -173,19 +175,36 @@ fun MyRecordMainContent(
     }
 
     Scaffold(
-        topBar = { TopBar(name = memberInfo?.name ?: "", onLogout = onLogout) }
+        contentWindowInsets = ScaffoldDefaults.contentWindowInsets,
+        topBar = {
+            TopBar(name = memberInfo?.name ?: "", onLogout = onLogout)
+        }
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(bottom = 56.dp)
+                .padding(horizontal = 8.dp)
+                .padding(bottom = 30.dp)
         ) {
-            item { ProfileCard(onFollowerClick, navController, memberInfo = memberInfo) }
-            item { TimeFilterTabs() }
             item {
-                CategoryTabs(onCategoryClick, categoryCounts)
+                MyProfileCard(
+                    onFollowerClick = onFollowerClick,
+                    navController = navController,
+                    memberInfo = memberInfo
+                )
             }
+
+            item {
+                FilterAndCategorySection(
+                    selectedTabIndex = 0,
+                    onTabClick = { /* TODO */ },
+                    onPeriodClick = { /* TODO */ },
+                    onCategoryClick = onCategoryClick,
+                    categoryCounts = categoryCounts
+                )
+            }
+
             item {
                 RecordList(
                     onCountReady = { counts -> categoryCounts = counts },
@@ -269,7 +288,7 @@ fun TopBar(name: String, onLogout: () -> Unit) {
 
 // 2. 프로필 카드 구현
 @Composable
-fun ProfileCard(
+fun MyProfileCard(
     onFollowerClick: () -> Unit,
     navController: NavController,
     memberInfo: MemberInfoResponse?
@@ -291,202 +310,193 @@ fun ProfileCard(
         }
     }
 
-    Card(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(210.dp)
-            .padding(horizontal = 16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        shape = RoundedCornerShape(12.dp)
+            .padding(16.dp)
+            .shadow(
+                elevation = 6.dp,
+                shape = RoundedCornerShape(12.dp),
+                clip = false
+            )
+            .background(White, shape = RoundedCornerShape(12.dp))
+            .border(1.dp, CoolGray700, shape = RoundedCornerShape(12.dp))
+            .padding(16.dp)
     ) {
-        Box(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            if (memberInfo == null) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            } else {
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(start = 16.dp, top = 16.dp)
-                ) {
-                    // 프로필 이미지
-                    if (memberInfo.profileImageUrl != null) {
-                        Image(
-                            painter = rememberAsyncImagePainter(memberInfo.profileImageUrl),
-                            contentDescription = "Profile Image",
-                            modifier = Modifier
-                                .size(75.dp)
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.AccountCircle,
-                            contentDescription = "Profile Image",
-                            modifier = Modifier.size(75.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Text(
-                        text = memberInfo.name,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
-
-                    Text(
-                        text = memberInfo.bio ?: "안녕하세요!",
-                        fontSize = 13.sp,
-                        maxLines = 2
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // 팔로워 버튼만 표시 (팔로잉 제거)
-                    Button(
-                        onClick = onFollowerClick,
-                        shape = RoundedCornerShape(20.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF1F1F1))
-                    ) {
-                        Text("팔로워 $followerCount", fontSize = 12.sp, color = Color.Black)
-                    }
-                }
-
-                // 오른쪽 버튼들
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    Button(
-                        onClick = { },
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.size(36.dp),
-                        contentPadding = PaddingValues(0.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF000))
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Share,
-                            contentDescription = "Share",
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-
-                    Button(
-                        onClick = { navController.navigate("editProfile") },
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.size(36.dp),
-                        contentPadding = PaddingValues(0.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF000))
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "Edit",
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-// 3. 시간 필터 탭
-@Composable
-fun TimeFilterTabs() {
-    val tabs = listOf("올해", "이번 달", "평생")
-    var selectedTab by remember { mutableStateOf(0) }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // 왼쪽 필터 버튼들
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            tabs.forEachIndexed { index, title ->
-                Button(
-                    onClick = { selectedTab = index },
-                    shape = RoundedCornerShape(20.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (index == selectedTab) Color.LightGray else Color.White
-                    )
-                ) {
-                    Text(
-                        text = title,
-                        fontSize = 12.sp,
-                        color = if (index == selectedTab) Color.Black else Color.Gray
-                    )
-                }
-            }
-        }
-
-        // 오른쪽 "기간" 버튼
-        Button(
-            onClick = { /* TODO: 기간 설정 기능 */ },
-            shape = RoundedCornerShape(20.dp),
-            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
-        ) {
-            Text("기간 >", fontSize = 8.sp, color = Color.Black)
-        }
-    }
-
-    Spacer(modifier = Modifier.height(8.dp)) // 하단 여백
-}
-
-// 4. 기록 분류
-@Composable
-fun CategoryTabs(
-    onCategoryClick: (String) -> Unit,
-    categoryCounts: Map<String, Int> = mapOf("전체" to 0, "도서" to 0, "영화" to 0, "공연" to 0)
-) {
-    val categoryName = listOf("전체", "도서", "영화", "공연")
-    var selected by remember { mutableStateOf(0) }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        categoryName.forEachIndexed { i, name ->
-            val count = categoryCounts[name] ?: 0
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color.LightGray)
-                    .clickable {
-                        selected = i
-                        onCategoryClick(name)
-                    }
-                    .padding(vertical = 12.dp),
-                contentAlignment = Alignment.Center
+        Column {
+            Column(
+                horizontalAlignment = Alignment.Start,
+                modifier = Modifier.fillMaxWidth()
             ) {
+                // 프로필 이미지
+                if (memberInfo?.profileImageUrl != null) {
+                    Image(
+                        painter = rememberAsyncImagePainter(memberInfo.profileImageUrl),
+                        contentDescription = "Profile Image",
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.AccountCircle,
+                        contentDescription = "Profile",
+                        modifier = Modifier.size(56.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "$name $count",
-                    color = Color.Black,
+                    text = memberInfo?.name ?: "",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+                Text(
+                    text = memberInfo?.bio ?: "안녕하세요.",
                     fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
+                    color = Color.Gray
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // 팔로워 버튼만 표시 (팔로잉 제거)
+            Button(
+                onClick = onFollowerClick,
+                shape = RoundedCornerShape(20.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF1F1F1))
+            ) {
+                Text("팔로워 $followerCount", fontSize = 12.sp, color = Color.Black)
+            }
+        }
+
+        // 오른쪽 버튼들
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Button(
+                onClick = { },
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.size(36.dp),
+                contentPadding = PaddingValues(0.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF000))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Share,
+                    contentDescription = "Share",
+                    modifier = Modifier.size(16.dp),
+                    tint = CoolGray700
+                )
+            }
+
+            Button(
+                onClick = { navController.navigate("editProfile") },
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.size(36.dp),
+                contentPadding = PaddingValues(0.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF000))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = "Edit",
+                    modifier = Modifier.size(16.dp),
+                    tint = CoolGray700
                 )
             }
         }
+    }
+}
+
+@Composable
+fun FilterAndCategorySection(
+    selectedTabIndex: Int,
+    onTabClick: (Int) -> Unit,
+    onPeriodClick: () -> Unit,
+    onCategoryClick: (String) -> Unit,
+    categoryCounts: Map<String, Int>
+) {
+    val tabs = listOf("올해", "이번 달", "평생")
+    val categories = listOf("전체", "도서", "영화", "공연")
+    val counts = listOf(
+        categoryCounts["전체"] ?: 0,
+        categoryCounts["도서"] ?: 0,
+        categoryCounts["영화"] ?: 0,
+        categoryCounts["공연"] ?: 0
+    )
+    val categoryColors = listOf(
+        Color(0xFFEAF0F8),
+        Color(0xFFD4EBFF),
+        Color(0xFFFFF3C8),
+        Color(0xFFE9F5D4)
+    )
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // 상단 탭 필터
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                tabs.forEachIndexed { index, title ->
+                    OutlinedButton(
+                        onClick = { onTabClick(index) },
+                        shape = RoundedCornerShape(20.dp),
+                        border = BorderStroke(1.dp, CoolGray200),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = if (index == selectedTabIndex) Color.White else Color(0xFFF5F5F5),
+                            contentColor = Color.Black
+                        ),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                    ) {
+                        Text(text = title, fontSize = 12.sp)
+                    }
+                }
+            }
+
+            TextButton(onClick = onPeriodClick) {
+                Text("기간 >", fontSize = 12.sp, color = Color.Gray)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 카테고리 카드
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            categories.forEachIndexed { i, name ->
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            brush = Brush.radialGradient(
+                                colors = listOf(categoryColors[i], Color.White),
+                                radius = 130f
+                            )
+                        )
+                        .border(1.dp, CoolGray700, RoundedCornerShape(12.dp))
+                        .clickable { onCategoryClick(name) }
+                        .padding(vertical = 12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(text = name, fontSize = 12.sp, color = Color.DarkGray)
+                    Text(text = counts[i].toString(), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
@@ -530,15 +540,106 @@ fun RecordList(
             .padding(horizontal = 16.dp)
             .padding(top = 4.dp)
     ) {
-        Text("기록", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+        Text(
+            text = "기록",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black
+        )
+        Spacer(modifier = Modifier.height(16.dp))
 
         diaries.forEach { diary ->
-            DiaryCard(diary, navController)
-            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = {
+                    val record = Record(
+                        id = diary.id,
+                        title = diary.title,
+                        date = diary.createdDate.split(" ")[0],
+                        category = diary.categoryLabel,
+                        rating = diary.rating.toFloat(),
+                        content = diary.content,
+                        isPublic = false,
+                        photoUri = null
+                    )
+
+                    navController.currentBackStackEntry?.savedStateHandle?.set("record", record)
+                    navController.navigate("recordDetail")
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFF5F5F5),
+                    contentColor = Color.Black
+                ),
+                contentPadding = PaddingValues(16.dp),
+                shape = RoundedCornerShape(8.dp),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Base64 이미지 처리
+                    val imageBitmap = rememberBase64ImageBitmap(diary.image)
+
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .background(Color.LightGray)
+                    ) {
+                        if (imageBitmap != null) {
+                            Image(
+                                bitmap = imageBitmap,
+                                contentDescription = "썸네일",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Icon(
+                                painter = painterResource(
+                                    id = when (diary.category) {
+                                        "BOOK" -> R.drawable.recommend_book
+                                        "MOVIE" -> R.drawable.recommend_movie
+                                        "PERFORMANCE" -> R.drawable.recommend_show
+                                        else -> R.drawable.ic_add
+                                    }
+                                ),
+                                contentDescription = null,
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column {
+                        Text(diary.title, fontWeight = FontWeight.Bold)
+                        Text("${diary.categoryLabel}", fontSize = 12.sp, color = Color.Gray)
+
+                        val watchedDate = WatchedDateManager.getWatchedDate(diary.id)
+                            ?.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                            ?: diary.createdDate.split(" ")[0]
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Done,
+                                contentDescription = null,
+                                tint = Color(0xFF1E88E5),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text("${diary.rating}", fontSize = 12.sp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(watchedDate, fontSize = 12.sp)
+                        }
+
+                        Text(diary.content, fontSize = 12.sp, maxLines = 1)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
-
 
 // Base64 문자열을 ImageBitmap으로 변환하는 함수
 @Composable
@@ -552,124 +653,6 @@ fun rememberBase64ImageBitmap(base64String: String?): androidx.compose.ui.graphi
         } catch (e: Exception) {
             Log.e("Base64Image", "이미지 변환 실패: ${e.message}")
             null
-        }
-    }
-}
-
-@Composable
-fun DiaryCard(diary: DiaryResponse, navController: NavController) {
-    val context = LocalContext.current
-
-    LaunchedEffect(Unit) {
-        WatchedDateManager.initialize(context)
-    }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(100.dp)
-            .clickable {
-                val record = Record(
-                    id = diary.id,
-                    title = diary.title,
-                    date = diary.createdDate.split(" ")[0],
-                    category = diary.categoryLabel,
-                    rating = diary.rating.toFloat(),
-                    content = diary.content,
-                    isPublic = false,
-                    photoUri = null
-                )
-
-                navController.currentBackStackEntry?.savedStateHandle?.set("record", record)
-
-                navController.navigate("recordDetail")
-            },
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(12.dp)
-                .fillMaxSize(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Base64 이미지 처리
-            val imageBitmap = rememberBase64ImageBitmap(diary.image)
-
-            Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color.LightGray)
-            ) {
-                if (imageBitmap != null) {
-                    Image(
-                        bitmap = imageBitmap,
-                        contentDescription = "썸네일",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                } else {
-                    // 이미지가 없을 때 플레이스홀더
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.LightGray),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Image(
-                            painter = painterResource(
-                                id = when (diary.category) {
-                                    "BOOK" -> R.drawable.recommend_book
-                                    "MOVIE" -> R.drawable.recommend_movie
-                                    "PERFORMANCE" -> R.drawable.recommend_show
-                                    else -> R.drawable.ic_add
-                                }
-                            ),
-                            contentDescription = "카테고리 아이콘",
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // 텍스트 정보
-            Column(
-                verticalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxHeight()
-            ) {
-                Text(
-                    text = diary.title,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
-                    maxLines = 1
-                )
-                Text(
-                    text = diary.categoryLabel,
-                    fontSize = 12.sp,
-                    color = Color.Gray
-                )
-
-                val watchedDate = WatchedDateManager.getWatchedDate(diary.id)
-                    ?.format(DateTimeFormatter.ISO_LOCAL_DATE)
-                    ?: diary.createdDate.split(" ")[0]
-
-                Text(
-                    text = watchedDate,
-                    fontSize = 12.sp,
-                    color = Color.Gray
-                )
-
-                Text(
-                    text = diary.content,
-                    fontSize = 12.sp,
-                    color = Color.DarkGray,
-                    maxLines = 1
-                )
-            }
         }
     }
 }
