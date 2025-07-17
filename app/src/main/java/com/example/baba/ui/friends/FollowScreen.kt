@@ -19,11 +19,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import com.example.baba.R
-import com.example.baba.data.friends.FriendResponse
+import com.example.baba.data.member.MemberInfoResponse
 import com.example.baba.data.network.RetrofitInstance
 import com.example.baba.ui.theme.Blue1
-import com.example.baba.ui.theme.CoolGray500
-import kotlinx.coroutines.launch
 
 @Composable
 fun FollowScreen(
@@ -33,8 +31,8 @@ fun FollowScreen(
 ) {
     var selectedTabIndex by remember { mutableStateOf(0) }
     var showProfileScreen by remember { mutableStateOf(false) }
-    var followingList by remember { mutableStateOf<List<FriendResponse>>(emptyList()) }
-    var followerList by remember { mutableStateOf<List<FriendResponse>>(emptyList()) }
+    var followingList by remember { mutableStateOf<List<MemberInfoResponse>>(emptyList()) }
+    var followerList by remember { mutableStateOf<List<MemberInfoResponse>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
     var currentUsername by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
@@ -50,7 +48,6 @@ fun FollowScreen(
         }
     }
 
-
     // 탭 타이틀 동적 생성
     val tabTitles = listOf(
         "팔로잉 ${followingList.size}",
@@ -58,21 +55,19 @@ fun FollowScreen(
     )
 
     // API 호출
-    LaunchedEffect(selectedTabIndex, currentUsername) {
+    LaunchedEffect(currentUsername) {
         if (currentUsername.isNotEmpty()) {
-            coroutineScope.launch {
-                isLoading = true
-                try {
-                    if (selectedTabIndex == 0) {
-                        followingList = RetrofitInstance.friendsApi.getFollowingList(currentUsername)
-                    } else {
-                        followerList = RetrofitInstance.friendsApi.getFollowerList(currentUsername)
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                } finally {
-                    isLoading = false
-                }
+            isLoading = true
+            try {
+                val followingResponse = RetrofitInstance.friendsApi.getFollowingList(currentUsername)
+                followingList = followingResponse
+
+                val followerResponse = RetrofitInstance.friendsApi.getFollowerList(currentUsername)
+                followerList = followerResponse
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                isLoading = false
             }
         }
     }
@@ -135,9 +130,9 @@ fun FollowScreen(
                 }
             } else {
                 val list = if (selectedTabIndex == 0) followingList else followerList
-                items(list) { friend ->
+                items(list) { member ->
                     FriendListItem(
-                        friend = friend,
+                        member = member,
                         onProfileClick = { showProfileScreen = true }
                     )
                 }
@@ -165,7 +160,7 @@ fun FollowTopBar(
 
 @Composable
 fun FriendListItem(
-    friend: FriendResponse,
+    member: MemberInfoResponse,
     onProfileClick: () -> Unit
 ) {
     Row(
@@ -176,8 +171,8 @@ fun FriendListItem(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Image(
-            painter = if (friend.profileImageUrl != null) {
-                rememberAsyncImagePainter(friend.profileImageUrl)
+            painter = if (member.profileImageUrl != null) {
+                rememberAsyncImagePainter(member.profileImageUrl)
             } else {
                 painterResource(id = R.drawable.ic_default_profile)
             },
@@ -186,8 +181,16 @@ fun FriendListItem(
         )
         Spacer(modifier = Modifier.width(12.dp))
         Column {
-            Text(friend.nickname, fontWeight = FontWeight.Medium)
-            Text(friend.username, fontSize = 12.sp, color = Color.Gray)
+            Text(
+                text = member.name,
+                fontWeight = FontWeight.Medium,
+                fontSize = 16.sp
+            )
+            Text(
+                text = member.username,
+                fontSize = 12.sp,
+                color = Color.Gray
+            )
         }
     }
 }

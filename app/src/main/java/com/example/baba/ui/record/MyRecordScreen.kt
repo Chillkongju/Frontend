@@ -281,8 +281,9 @@ fun ProfileCard(
         memberInfo?.let { info ->
             coroutineScope.launch {
                 try {
-                    val followers = RetrofitInstance.friendsApi.getFollowerList(info.username)
-                    followerCount = followers.size
+                    val followerUsernames = RetrofitInstance.friendsApi.getFollowerList(info.username)
+                    followerCount = followerUsernames.size
+                    Log.d("ProfileCard", "팔로워: ${followerCount}")
                 } catch (e: Exception) {
                     Log.e("ProfileCard", "팔로워 수 조회 실패: ${e.message}")
                 }
@@ -299,12 +300,9 @@ fun ProfileCard(
         shape = RoundedCornerShape(12.dp)
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .height(250.dp)
+            modifier = Modifier.fillMaxSize()
         ) {
             if (memberInfo == null) {
-                // 로딩 상태
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -324,17 +322,14 @@ fun ProfileCard(
                             contentDescription = "Profile Image",
                             modifier = Modifier
                                 .size(75.dp)
-                                .clip(CircleShape)
-                                .testTag("profile_image"),
+                                .clip(CircleShape),
                             contentScale = ContentScale.Crop
                         )
                     } else {
                         Icon(
                             imageVector = Icons.Default.AccountCircle,
                             contentDescription = "Profile Image",
-                            modifier = Modifier
-                                .size(75.dp)
-                                .testTag("profile_image")
+                            modifier = Modifier.size(75.dp)
                         )
                     }
 
@@ -343,30 +338,29 @@ fun ProfileCard(
                     Text(
                         text = memberInfo.name,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        modifier = Modifier.testTag("name")
+                        fontSize = 16.sp
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
 
                     Text(
                         text = memberInfo.bio ?: "안녕하세요!",
                         fontSize = 13.sp,
-                        modifier = Modifier.testTag("comment"),
                         maxLines = 2
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
 
+                    // 팔로워 버튼만 표시 (팔로잉 제거)
                     Button(
                         onClick = onFollowerClick,
                         shape = RoundedCornerShape(20.dp),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF1F1F1))
                     ) {
                         Text("팔로워 $followerCount", fontSize = 12.sp, color = Color.Black)
                     }
                 }
 
+                // 오른쪽 버튼들
                 Row(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
