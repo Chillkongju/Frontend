@@ -43,6 +43,9 @@ fun FollowScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var currentUsername by remember { mutableStateOf("") }
 
+    // 새로고침 트리거 - 이 값이 변경되면 데이터를 다시 로드
+    var refreshTrigger by remember { mutableStateOf(0) }
+
     val coroutineScope = rememberCoroutineScope()
 
     // 사용자 정보 가져오기
@@ -78,13 +81,13 @@ fun FollowScreen(
         }
     }
 
-    // 팔로워/팔로잉 목록 로드
-    LaunchedEffect(currentUsername) {
+    // 팔로워/팔로잉 목록 로드 - refreshTrigger 값이 변경될 때마다 실행
+    LaunchedEffect(currentUsername, refreshTrigger) {
         if (currentUsername.isNotEmpty()) {
             isLoading = true
             errorMessage = null
 
-            Log.d("FollowScreen", "팔로잉/팔로워 목록 조회 시작 - username: $currentUsername")
+            Log.d("FollowScreen", "팔로잉/팔로워 목록 조회 시작 - username: $currentUsername, refresh: $refreshTrigger")
 
             try {
                 // 팔로잉 목록 조회 (username 리스트)
@@ -172,12 +175,22 @@ fun FollowScreen(
         }
     }
 
+    // 프로필 화면에서 돌아올 때 새로고침 처리
+    LaunchedEffect(showProfileScreen) {
+        if (!showProfileScreen && selectedMember != null) {
+            // 프로필 화면에서 돌아왔을 때 새로고침
+            Log.d("FollowScreen", "프로필 화면에서 돌아와서 새로고침 실행")
+            refreshTrigger++
+            selectedMember = null
+        }
+    }
+
     if (showProfileScreen && selectedMember != null) {
         FriendProfileScreen(
             targetMember = selectedMember,
             onBackClick = {
                 showProfileScreen = false
-                selectedMember = null
+                // selectedMember는 LaunchedEffect에서 처리
             }
         )
         return
@@ -270,71 +283,8 @@ fun FollowScreen(
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Button(
                                     onClick = {
-                                        // 재시도
-                                        coroutineScope.launch {
-                                            isLoading = true
-                                            errorMessage = null
-                                            try {
-                                                // 팔로잉 목록 재조회
-                                                val followingResponse = RetrofitInstance.friendsApi.getFollowingList(currentUsername)
-                                                followingUsernameList = followingResponse
-
-                                                val followingMembers = mutableListOf<MemberInfoResponse>()
-                                                for (username in followingUsernameList) {
-                                                    val displayName = when (username) {
-                                                        "user1" -> "김민지"
-                                                        "user2" -> "정윤희"
-                                                        "user3" -> "양서영"
-                                                        "admin" -> "관리자"
-                                                        else -> username
-                                                    }
-
-                                                    val memberInfo = MemberInfoResponse(
-                                                        id = username.hashCode().toLong(),
-                                                        username = username,
-                                                        name = displayName,
-                                                        profileImageUrl = null,
-                                                        bio = "안녕하세요!",
-                                                        preference = null,
-                                                        link = null
-                                                    )
-                                                    followingMembers.add(memberInfo)
-                                                }
-                                                followingList = followingMembers
-
-                                                // 팔로워 목록 재조회
-                                                val followerResponse = RetrofitInstance.friendsApi.getFollowerList(currentUsername)
-                                                followerUsernameList = followerResponse
-
-                                                val followerMembers = mutableListOf<MemberInfoResponse>()
-                                                for (username in followerUsernameList) {
-                                                    val displayName = when (username) {
-                                                        "user1" -> "김민지"
-                                                        "user2" -> "정윤희"
-                                                        "user3" -> "양서영"
-                                                        "admin" -> "관리자"
-                                                        else -> username
-                                                    }
-
-                                                    val memberInfo = MemberInfoResponse(
-                                                        id = username.hashCode().toLong(),
-                                                        username = username,
-                                                        name = displayName,
-                                                        profileImageUrl = null,
-                                                        bio = "안녕하세요!",
-                                                        preference = null,
-                                                        link = null
-                                                    )
-                                                    followerMembers.add(memberInfo)
-                                                }
-                                                followerList = followerMembers
-
-                                            } catch (e: Exception) {
-                                                errorMessage = "목록을 불러오는데 실패했습니다"
-                                            } finally {
-                                                isLoading = false
-                                            }
-                                        }
+                                        // 재시도 - refreshTrigger 증가로 새로고침
+                                        refreshTrigger++
                                     }
                                 ) {
                                     Text("다시 시도")
