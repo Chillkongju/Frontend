@@ -44,7 +44,7 @@ fun BottomNavigationBar(
 
     NavigationBar(
         modifier = Modifier
-            .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))  // 윗모서리 반경
+            .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))
             .border(
                 width = 1.dp,
                 color = CoolGray200,
@@ -54,7 +54,12 @@ fun BottomNavigationBar(
         contentColor = CoolGray500
     ) {
         items.forEach { screen ->
-            val isSelected = currentRoute == screen.route
+            // 현재 경로와 스크린 경로가 일치하는지 확인
+            // record의 경우 "recordList"도 포함하도록 수정
+            val isSelected = when (screen.route) {
+                "record" -> currentRoute == "record" || currentRoute == "recordList" || currentRoute.startsWith("record")
+                else -> currentRoute == screen.route
+            }
 
             NavigationBarItem(
                 icon = {
