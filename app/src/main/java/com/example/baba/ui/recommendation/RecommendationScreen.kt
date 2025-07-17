@@ -76,7 +76,7 @@ fun RecommendationScreen() {
                                     Log.d("RecommendationScreen", "필터링된 추천: title='${recommendation.title}', summary='${recommendation.summary.take(50)}...'")
                                 }
                                 isValid
-                            }
+                            }.take(3)
 
                             Log.d("RecommendationScreen", "카테고리: ${categoryResponse.category}, 필터링 후 추천 수: ${filteredRecommendations.size}")
 
@@ -131,7 +131,7 @@ fun RecommendationScreen() {
                                         Log.d("RecommendationScreen", "생성 - 필터링된 추천: title='${recommendation.title}', summary='${recommendation.summary.take(50)}...'")
                                     }
                                     isValid
-                                }
+                                }.take(3)
 
                                 Log.d("RecommendationScreen", "생성 - 카테고리: ${categoryResponse.category}, 필터링 후 추천 수: ${filteredRecommendations.size}")
 
@@ -307,7 +307,7 @@ fun RecommendationScreen() {
                             Spacer(modifier = Modifier.height(12.dp))
                             Button(
                                 onClick = { generateMonthlyRecommendations() },
-                                enabled = !isGeneratingMonthly
+                                enabled = !isGeneratingMonthly,
                             ) {
                                 if (isGeneratingMonthly) {
                                     CircularProgressIndicator(

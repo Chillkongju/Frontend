@@ -182,13 +182,61 @@ fun FriendsScreen(navController: NavController? = null) {
         )
     )
 
+    val dummyComments = mapOf(
+        1 to listOf(
+            Comment(
+                id = 101,
+                userName = "김민지",
+                content = "저도 이 영화 너무 좋아해요!",
+                timeAgo = "2시간 전"
+            ),
+            Comment(
+                id = 102,
+                userName = "양서영",
+                content = "4DX로 보면 정말 재미있겠네요 ㅎㅎ",
+                timeAgo = "1시간 전"
+            )
+        ),
+        2 to listOf(
+            Comment(
+                id = 201,
+                userName = "김민지",
+                content = "연출이 정말 좋은 영화죠!",
+                timeAgo = "3시간 전"
+            )
+        ),
+        3 to listOf(
+            Comment(
+                id = 301,
+                userName = "정윤희",
+                content = "이 책 저도 읽어봐야겠어요",
+                timeAgo = "4시간 전"
+            ),
+            Comment(
+                id = 302,
+                userName = "김민지",
+                content = "저도 꼭 읽어봐야겠어요",
+                timeAgo = "방금 전"
+            )
+        ),
+        4 to listOf(
+            Comment(
+                id = 401,
+                userName = "김민지",
+                content = "저도 다시 보고 싶네요 ㅠㅠ!",
+                timeAgo = "3시간 전"
+            )
+        )
+    )
+
     LaunchedEffect(feedPosts) {
         feedPosts.forEach { post ->
             if (!commentCounts.containsKey(post.id)) {
                 commentCounts[post.id] = post.comments
             }
             if (!postComments.containsKey(post.id)) {
-                postComments[post.id] = mutableListOf<Comment>().toMutableStateList()
+                val initialComments = dummyComments[post.id] ?: emptyList()
+                postComments[post.id] = initialComments.toMutableStateList()
             }
             if (!postLikeStates.containsKey(post.id)) {
                 postLikeStates[post.id] = false

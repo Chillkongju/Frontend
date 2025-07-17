@@ -82,6 +82,11 @@ fun RecordDetailScreen(
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
 
+    // BackHandler 추가
+    BackHandler {
+        navController.popBackStack()
+    }
+
     // 댓글 목록 새로고침 함수
     suspend fun refreshComments() {
         try {
@@ -341,91 +346,112 @@ fun RecordDetailScreen(
                 .padding(start = 16.dp, end = 16.dp, top = 16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            // 상단 헤더 (뒤로가기 버튼과 더보기 버튼)
-            Row(
+            // 상단 헤더 (뒤로가기 버튼과 더보기 버튼) - 스타일 개선
+            Surface(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                color = Color.White
             ) {
-                // 뒤로가기 버튼
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Back",
+                Row(
                     modifier = Modifier
-                        .size(28.dp)
-                        .clickable {
-                            navController.popBackStack()
-                        }
-                )
-
-                // 더보기 버튼과 드롭다운
-                Box {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "More",
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // 뒤로가기 버튼 - 스타일 개선
+                    IconButton(
+                        onClick = { navController.popBackStack() },
                         modifier = Modifier
-                            .size(28.dp)
-                            .clickable {
-                                showDropdownMenu = true
-                            }
-                    )
-
-                    DropdownMenu(
-                        expanded = showDropdownMenu,
-                        onDismissRequest = { showDropdownMenu = false },
-                        modifier = Modifier
-                            .width(120.dp)
-                            .background(Color.White, shape = RoundedCornerShape(8.dp))
+                            .size(40.dp)
+                            .background(
+                                Color.Transparent,
+                                shape = CircleShape
+                            )
                     ) {
-                        DropdownMenuItem(
-                            text = {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Edit,
-                                        contentDescription = "Edit",
-                                        modifier = Modifier.size(16.dp),
-                                        tint = Color.Gray
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = "수정",
-                                        fontSize = 14.sp,
-                                        color = Color.Black
-                                    )
-                                }
-                            },
-                            onClick = {
-                                showDropdownMenu = false
-                                // TODO: 수정 기능 구현
-                            }
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "뒤로가기",
+                            modifier = Modifier.size(24.dp),
+                            tint = Color.Black
                         )
+                    }
 
-                        DropdownMenuItem(
-                            text = {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Delete,
-                                        contentDescription = "Delete",
-                                        modifier = Modifier.size(16.dp),
-                                        tint = Color.Red
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = "삭제",
-                                        fontSize = 14.sp,
-                                        color = Color.Red
-                                    )
+                    // 더보기 버튼과 드롭다운
+                    Box {
+                        IconButton(
+                            onClick = { showDropdownMenu = true },
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(
+                                    Color.Transparent,
+                                    shape = CircleShape
+                                )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "더보기",
+                                modifier = Modifier.size(24.dp),
+                                tint = Color.Black
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = showDropdownMenu,
+                            onDismissRequest = { showDropdownMenu = false },
+                            modifier = Modifier
+                                .width(120.dp)
+                                .background(Color.White, shape = RoundedCornerShape(8.dp))
+                        ) {
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Edit,
+                                            contentDescription = "Edit",
+                                            modifier = Modifier.size(16.dp),
+                                            tint = Color.Gray
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "수정",
+                                            fontSize = 14.sp,
+                                            color = Color.Black
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    showDropdownMenu = false
+                                    // TODO: 수정 기능 구현
                                 }
-                            },
-                            onClick = {
-                                showDropdownMenu = false
-                                showDeleteDialog = true
-                            }
-                        )
+                            )
+
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = "Delete",
+                                            modifier = Modifier.size(16.dp),
+                                            tint = Color.Red
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "삭제",
+                                            fontSize = 14.sp,
+                                            color = Color.Red
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    showDropdownMenu = false
+                                    showDeleteDialog = true
+                                }
+                            )
+                        }
                     }
                 }
             }

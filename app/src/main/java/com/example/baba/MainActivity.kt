@@ -61,7 +61,7 @@ class MainActivity : ComponentActivity() {
             // 앱 시작 시 저장된 세션 확인
             LaunchedEffect(Unit) {
                 // 스플래시 화면 시간
-                kotlinx.coroutines.delay(1500)
+                kotlinx.coroutines.delay(3000)
                 showSplash = false
 
                 // 저장된 로그인 상태 확인

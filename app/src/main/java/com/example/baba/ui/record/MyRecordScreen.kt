@@ -33,6 +33,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
@@ -183,6 +185,7 @@ fun MyRecordMainContent(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
+                .background(White)
                 .padding(innerPadding)
                 .padding(horizontal = 8.dp)
                 .padding(bottom = 30.dp)
@@ -500,7 +503,7 @@ fun FilterAndCategorySection(
     }
 }
 
-// 5. 기록 리스트 - 수정된 부분
+// 5. 기록 리스트
 @Composable
 fun RecordList(
     onCountReady: (Map<String, Int>) -> Unit = {},
@@ -511,7 +514,7 @@ fun RecordList(
 
     // SessionManager에서 직접 userId 가져오기
     LaunchedEffect(Unit) {
-        val userId = SessionManager.userId  // ← 직접 SessionManager 사용
+        val userId = SessionManager.userId
         if (userId != null && userId > 0) {
             try {
                 val response = RetrofitInstance.diaryApi.getAllMyDiaries(userId)
@@ -548,95 +551,209 @@ fun RecordList(
         )
         Spacer(modifier = Modifier.height(16.dp))
 
-        diaries.forEach { diary ->
-            Button(
-                onClick = {
-                    val record = Record(
-                        id = diary.id,
-                        title = diary.title,
-                        date = diary.createdDate.split(" ")[0],
-                        category = diary.categoryLabel,
-                        rating = diary.rating.toFloat(),
-                        content = diary.content,
-                        isPublic = false,
-                        photoUri = null
-                    )
-
-                    navController.currentBackStackEntry?.savedStateHandle?.set("record", record)
-                    navController.navigate("recordDetail")
-                },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFF5F5F5),
-                    contentColor = Color.Black
-                ),
-                contentPadding = PaddingValues(16.dp),
-                shape = RoundedCornerShape(8.dp),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Base64 이미지 처리
-                    val imageBitmap = rememberBase64ImageBitmap(diary.image)
-
-                    Box(
-                        modifier = Modifier
-                            .size(64.dp)
-                            .background(Color.LightGray)
-                    ) {
-                        if (imageBitmap != null) {
-                            Image(
-                                bitmap = imageBitmap,
-                                contentDescription = "썸네일",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
+        if (diaries.isEmpty()) {
+            Text(
+                text = "기록이 없습니다",
+                fontSize = 14.sp,
+                color = Color.Gray,
+                modifier = Modifier.padding(16.dp)
+            )
+        } else {
+            diaries.forEachIndexed { index, diary ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color.White)
+                        .clickable {
+                            val record = Record(
+                                id = diary.id,
+                                title = diary.title,
+                                date = diary.createdDate.split(" ")[0],
+                                category = diary.categoryLabel,
+                                rating = diary.rating.toFloat(),
+                                content = diary.content,
+                                isPublic = false,
+                                photoUri = null
                             )
-                        } else {
-                            Icon(
-                                painter = painterResource(
-                                    id = when (diary.category) {
-                                        "BOOK" -> R.drawable.recommend_book
-                                        "MOVIE" -> R.drawable.recommend_movie
-                                        "PERFORMANCE" -> R.drawable.recommend_show
-                                        else -> R.drawable.ic_add
-                                    }
-                                ),
-                                contentDescription = null,
-                                modifier = Modifier.align(Alignment.Center)
+
+                            navController.currentBackStackEntry?.savedStateHandle?.set("record", record)
+                            navController.navigate("recordDetail")
+                        }
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // 이미지와 텍스트 정보를 가로로 배치
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        val imageBitmap = rememberBase64ImageBitmap(diary.image)
+
+                        Box(
+                            modifier = Modifier
+                                .width(68.dp)
+                                .height(100.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(CoolGray200),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (imageBitmap != null) {
+                                Image(
+                                    bitmap = imageBitmap,
+                                    contentDescription = diary.title,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
+                                Image(
+                                    painter = painterResource(
+                                        id = when (diary.category) {
+                                            "BOOK" -> R.drawable.recommend_book
+                                            "MOVIE" -> R.drawable.recommend_movie
+                                            "PERFORMANCE" -> R.drawable.recommend_show
+                                            else -> R.drawable.ic_add
+                                        }
+                                    ),
+                                    contentDescription = "카테고리 아이콘",
+                                    modifier = Modifier.size(40.dp)
+                                )
+                            }
+                        }
+
+                        Column(
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text(
+                                text = diary.title,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextBlack,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+
+                            Text(
+                                text = "${diary.categoryLabel} ${diary.createdDate.split("-")[0]}",
+                                fontSize = 12.sp,
+                                color = CoolGray500
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // 별점
+                        Box(
+                            modifier = Modifier
+                                .width(68.dp)
+                                .height(30.dp)
+                                .background(
+                                    color = CoolGray100,
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                .padding(horizontal = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_rating_button_star),
+                                    contentDescription = "별점",
+                                    modifier = Modifier.size(13.dp),
+                                    tint = Blue2
+                                )
 
-                    Column {
-                        Text(diary.title, fontWeight = FontWeight.Bold)
-                        Text("${diary.categoryLabel}", fontSize = 12.sp, color = Color.Gray)
+                                Spacer(modifier = Modifier.width(4.dp))
 
+                                Text(
+                                    text = diary.rating.toString(),
+                                    fontSize = 13.sp,
+                                    color = Blue2,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+
+                        // 날짜
                         val watchedDate = WatchedDateManager.getWatchedDate(diary.id)
                             ?.format(DateTimeFormatter.ISO_LOCAL_DATE)
                             ?: diary.createdDate.split(" ")[0]
 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Default.Done,
-                                contentDescription = null,
-                                tint = Color(0xFF1E88E5),
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text("${diary.rating}", fontSize = 12.sp)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(watchedDate, fontSize = 12.sp)
-                        }
+                        Text(
+                            text = watchedDate.replace("-", "."),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = CoolGray500
+                        )
+                    }
 
-                        Text(diary.content, fontSize = 12.sp, maxLines = 1)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(IntrinsicSize.Min)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(2.dp)
+                                .fillMaxHeight()
+                                .background(CoolGray300)
+                        )
+
+                        Spacer(modifier = Modifier.width(10.dp))
+
+                        Column {
+                            Text(
+                                text = diary.content,
+                                fontSize = 14.sp,
+                                color = CoolGray700,
+                                lineHeight = 20.sp,
+                                maxLines = 5,
+                                overflow = TextOverflow.Ellipsis
+                            )
+
+                            if (diary.content.length > 50) {
+                                Text(
+                                    text = "더보기",
+                                    fontSize = 12.sp,
+                                    color = Blue4,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier
+                                        .padding(top = 4.dp)
+                                        .clickable {
+                                            val record = Record(
+                                                id = diary.id,
+                                                title = diary.title,
+                                                date = diary.createdDate.split(" ")[0],
+                                                category = diary.categoryLabel,
+                                                rating = diary.rating.toFloat(),
+                                                content = diary.content,
+                                                isPublic = false,
+                                                photoUri = null
+                                            )
+
+                                            navController.currentBackStackEntry?.savedStateHandle?.set("record", record)
+                                            navController.navigate("recordDetail")
+                                        }
+                                )
+                            }
+                        }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                if (index < diaries.size - 1) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 20.dp),
+                        thickness = 1.dp,
+                        color = CoolGray100
+                    )
+                }
+            }
         }
     }
 }
