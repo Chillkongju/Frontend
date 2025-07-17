@@ -37,6 +37,64 @@ import com.example.baba.data.record.WatchedDateManager
 import com.example.baba.ui.theme.*
 import java.time.format.DateTimeFormatter
 
+// 더미 데이터 - 사용자별 기록 데이터
+data class FriendRecordData(
+    val id: Long,
+    val title: String,
+    val category: String,
+    val rating: String,
+    val date: String,
+    val comment: String,
+    val image: Int? = null // 이미지 리소스 ID
+)
+
+// 사용자별 기록 더미 데이터
+val friendsRecordData = mapOf(
+    "정윤희" to listOf(
+        FriendRecordData(
+            id = 1L,
+            title = "알라딘",
+            category = "영화",
+            rating = "4.0",
+            date = "2025.07.14",
+            comment = "4dx로 봤는데 영화관 향기가 좋았음 디즈니 실사화 중 제일 맘에 들었음",
+            image = R.drawable.friend_movie_poster_1
+        ),
+        FriendRecordData(
+            id = 2L,
+            title = "해피엔드",
+            category = "영화",
+            rating = "4.5",
+            date = "2025.07.08",
+            comment = "재밌다.. 연출 넘 좋음",
+            image = R.drawable.friend_movie_poster_2
+        )
+    ),
+    "양서영" to listOf(
+        FriendRecordData(
+            id = 3L,
+            title = "마침내 멸망하는 여름(스페셜 에디션)",
+            category = "도서",
+            rating = "4.5",
+            date = "2025.07.01",
+            comment = "읽는 내내 꿈속에서 살고 있는 듯한 느낌이 들었다",
+            image = R.drawable.friend_book_poster_1
+        ),
+        FriendRecordData(
+            id = 4L,
+            title = "데스노트",
+            category = "공연",
+            rating = "4.5",
+            date = "2025.06.29",
+            comment = "인생작!!! 또 보고 싶당",
+            image = R.drawable.friend_show_poster_1
+        )
+    ),
+    "김민지" to listOf(
+        // 김민지 더미 데이터가 없으므로 빈 리스트
+    )
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FriendsRecordListScreen(
@@ -47,9 +105,6 @@ fun FriendsRecordListScreen(
     val initialIndex = categoryName.indexOf(category).takeIf { it >= 0 } ?: 0
     var selected by rememberSaveable { mutableStateOf(initialIndex) }
     var isGridView by rememberSaveable { mutableStateOf(false) }
-
-    var records by remember { mutableStateOf<List<RecordData>>(emptyList()) }
-    val context = LocalContext.current
 
     // username을 실제 이름으로 매핑하는 함수
     fun getUserDisplayName(username: String): String {
@@ -62,18 +117,16 @@ fun FriendsRecordListScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
-        WatchedDateManager.initialize(context)
-        try {
-            // TODO: 실제 친구의 기록 데이터를 가져오는 API 호출
-            // 현재는 빈 리스트로 설정
-            records = emptyList()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
+    // 사용자별 더미 데이터 가져오기
+    val displayName = targetMember?.let { getUserDisplayName(it.username) } ?: "사용자"
+    val userRecords = friendsRecordData[displayName] ?: emptyList()
 
-    val filteredRecords = if (selected == 0) records else records.filter { it.category == categoryName[selected] }
+    // 카테고리별 필터링
+    val filteredRecords = if (selected == 0) {
+        userRecords
+    } else {
+        userRecords.filter { it.category == categoryName[selected] }
+    }
 
     Scaffold(
         topBar = {
@@ -85,7 +138,7 @@ fun FriendsRecordListScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = targetMember?.let { getUserDisplayName(it.username) + "'s" } ?: "친구's",
+                    text = "$displayName's",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.align(Alignment.CenterVertically)
@@ -157,45 +210,55 @@ fun FriendsRecordListScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (isGridView) {
-                // Grid View
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxSize()
+            if (filteredRecords.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    items(filteredRecords.size) { index ->
-                        val record = filteredRecords[index]
-                        GridImageItem(
-                            imageBase64 = record.image,
-                            title = record.title,
-                            category = record.category,  // 카테고리 전달
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(0.7f)
-                                .clip(RoundedCornerShape(8.dp)),
-                            onClick = {}
-                        )
-                    }
+                    Text(
+                        text = "기록이 없습니다",
+                        fontSize = 16.sp,
+                        color = Color.Gray
+                    )
                 }
             } else {
-                // List View
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(filteredRecords.size) { index ->
-                        val record = filteredRecords[index]
-                        RecordItem(
-                            id = record.id,
-                            title = record.title,
-                            category = record.category,
-                            rating = record.rating,
-                            date = record.date,
-                            comment = record.comment,
-                            imageBase64 = record.image
-                        )
+                if (isGridView) {
+                    // Grid View
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(3),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(filteredRecords.size) { index ->
+                            val record = filteredRecords[index]
+                            GridImageItem(
+                                imageRes = record.image,
+                                title = record.title,
+                                category = record.category,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(0.7f)
+                                    .clip(RoundedCornerShape(8.dp)),
+                                onClick = {}
+                            )
+                        }
+                    }
+                } else {
+                    // List View
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(filteredRecords.size) { index ->
+                            val record = filteredRecords[index]
+                            FriendRecordItem(
+                                record = record,
+                                onClick = {}
+                            )
+                        }
                     }
                 }
             }
@@ -220,14 +283,12 @@ fun rememberBase64Image(base64String: String?): androidx.compose.ui.graphics.Ima
 // Grid View용 이미지 아이템
 @Composable
 fun GridImageItem(
-    imageBase64: String?,
+    imageRes: Int?,
     title: String,
     category: String,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    val imageBitmap = rememberBase64Image(imageBase64)
-
     Box(
         modifier = modifier
             .size(72.dp)
@@ -236,10 +297,10 @@ fun GridImageItem(
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        if (imageBitmap != null) {
+        if (imageRes != null) {
             // 이미지가 있을 때는 이미지만 표시
             Image(
-                bitmap = imageBitmap,
+                painter = painterResource(id = imageRes),
                 contentDescription = "Thumbnail",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
@@ -261,29 +322,11 @@ fun GridImageItem(
     }
 }
 
-data class RecordData(
-    val id: Long,
-    val title: String,
-    val category: String,
-    val rating: String,
-    val date: String,
-    val comment: String,
-    val image: String?
-)
-
 @Composable
-fun RecordItem(
-    id: Long,
-    title: String,
-    category: String,
-    rating: String,
-    date: String,
-    comment: String,
-    imageBase64: String?,
+fun FriendRecordItem(
+    record: FriendRecordData,
     onClick: () -> Unit = {}
 ) {
-    val imageBitmap = rememberBase64Image(imageBase64)
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -299,25 +342,26 @@ fun RecordItem(
                 .background(Color.LightGray),
             contentAlignment = Alignment.Center
         ) {
-            if (imageBitmap != null) {
+            if (record.image != null) {
                 Image(
-                    bitmap = imageBitmap,
+                    painter = painterResource(id = record.image),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
             } else {
-                Text(
-                    text = title,
-                    color = Color.Gray,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .padding(6.dp)
-                        .fillMaxWidth(),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                // 카테고리 아이콘
+                Image(
+                    painter = painterResource(
+                        id = when (record.category) {
+                            "도서" -> R.drawable.recommend_book
+                            "영화" -> R.drawable.recommend_movie
+                            "공연" -> R.drawable.recommend_show
+                            else -> R.drawable.ic_add
+                        }
+                    ),
+                    contentDescription = "카테고리 아이콘",
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }
@@ -331,13 +375,13 @@ fun RecordItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = title,
+                    text = record.title,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = category,
+                    text = record.category,
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
@@ -354,19 +398,19 @@ fun RecordItem(
                     modifier = Modifier.size(14.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                Text(text = rating, fontSize = 12.sp)
+                Text(text = record.rating, fontSize = 12.sp)
                 Spacer(modifier = Modifier.width(12.dp))
-                Text(text = date, fontSize = 12.sp, color = Color.Gray)
+                Text(text = record.date, fontSize = 12.sp, color = Color.Gray)
             }
 
             Spacer(modifier = Modifier.height(6.dp))
 
             // 코멘트
             Text(
-                text = comment,
+                text = record.comment,
                 fontSize = 12.sp,
                 color = Color.Gray,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
         }

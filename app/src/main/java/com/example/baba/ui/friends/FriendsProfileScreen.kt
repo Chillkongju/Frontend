@@ -24,11 +24,100 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
 import androidx.compose.ui.tooling.preview.Preview
 import coil.compose.rememberAsyncImagePainter
+import com.example.baba.R
 import com.example.baba.data.member.MemberInfoResponse
 import com.example.baba.data.network.RetrofitInstance
 import com.example.baba.data.network.SessionManager
 import com.example.baba.ui.theme.*
 import kotlinx.coroutines.launch
+
+// 더미 데이터 - 사용자별 피드 데이터
+data class FriendFeedPost(
+    val id: Int,
+    val userName: String,
+    val userProfileImage: Int,
+    val timeAgo: String,
+    val date: String,
+    val contentTitle: String,
+    val contentCategory: String,
+    val contentYear: String,
+    val contentImage: Int,
+    val rating: Double,
+    val reviewText: String,
+    val likes: Int,
+    val comments: Int
+)
+
+// 사용자별 더미 데이터
+val friendsFeedData = mapOf(
+    "정윤희" to listOf(
+        FriendFeedPost(
+            id = 1,
+            userName = "정윤희",
+            userProfileImage = R.drawable.ic_default_profile,
+            timeAgo = "10분 전",
+            date = "2025.07.14.",
+            contentTitle = "알라딘",
+            contentCategory = "영화",
+            contentYear = "2019",
+            contentImage = R.drawable.friend_movie_poster_1,
+            rating = 4.0,
+            reviewText = "4dx로 봤는데 영화관 향기가 좋았음 디즈니 실사화 중 제일 맘에 들었음",
+            likes = 10,
+            comments = 10
+        ),
+        FriendFeedPost(
+            id = 2,
+            userName = "정윤희",
+            userProfileImage = R.drawable.ic_default_profile,
+            timeAgo = "30분 전",
+            date = "2025.07.08.",
+            contentTitle = "해피엔드",
+            contentCategory = "영화",
+            contentYear = "2024",
+            contentImage = R.drawable.friend_movie_poster_2,
+            rating = 4.5,
+            reviewText = "재밌다.. 연출 넘 좋음",
+            likes = 10,
+            comments = 10
+        )
+    ),
+    "양서영" to listOf(
+        FriendFeedPost(
+            id = 3,
+            userName = "양서영",
+            userProfileImage = R.drawable.ic_default_profile,
+            timeAgo = "2시간 전",
+            date = "2025.07.01.",
+            contentTitle = "마침내 멸망하는 여름(스페셜 에디션)",
+            contentCategory = "도서",
+            contentYear = "2024",
+            contentImage = R.drawable.friend_book_poster_1,
+            rating = 4.5,
+            reviewText = "읽는 내내 꿈속에서 살고 있는 듯한 느낌이 들었다",
+            likes = 2,
+            comments = 10
+        ),
+        FriendFeedPost(
+            id = 4,
+            userName = "양서영",
+            userProfileImage = R.drawable.ic_default_profile,
+            timeAgo = "9시간 전",
+            date = "2025.06.29.",
+            contentTitle = "데스노트",
+            contentCategory = "공연",
+            contentYear = "2023",
+            contentImage = R.drawable.friend_show_poster_1,
+            rating = 4.5,
+            reviewText = "인생작!!! 또 보고 싶당",
+            likes = 2,
+            comments = 10
+        )
+    ),
+    "김민지" to listOf(
+        // 김민지 더미 데이터가 없으므로 빈 리스트
+    )
+)
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,6 +148,16 @@ fun FriendProfileScreen(
             else -> username
         }
     }
+
+    // 더미 데이터 기반 카테고리 카운트 계산
+    val displayName = targetMember?.let { getUserDisplayName(it.username) } ?: "사용자"
+    val userPosts = friendsFeedData[displayName] ?: emptyList()
+    val categoryCounts = mapOf(
+        "전체" to userPosts.size,
+        "도서" to userPosts.count { it.contentCategory == "도서" },
+        "영화" to userPosts.count { it.contentCategory == "영화" },
+        "공연" to userPosts.count { it.contentCategory == "공연" }
+    )
 
     // FriendsRecordListScreen 표시
     if (showRecordList) {
@@ -192,7 +291,6 @@ fun FriendProfileScreen(
         }
     }
 
-    val displayName = targetMember?.let { getUserDisplayName(it.username) } ?: "사용자"
     val followText = if (isFollowing) "팔로잉" else "팔로우"
 
     Scaffold(
@@ -301,12 +399,13 @@ fun FriendProfileScreen(
                         val categoryName = listOf("전체", "도서", "영화", "공연")
                         selectedCategory = categoryName[index]
                         showRecordList = true
-                    }
+                    },
+                    categoryCounts = categoryCounts
                 )
             }
 
             item {
-                RecordList()
+                RecordList(userPosts = userPosts)
             }
         }
     }
@@ -512,11 +611,17 @@ fun FilterAndCategorySection(
     onTabClick: (Int) -> Unit,
     onPeriodClick: () -> Unit,
     selectedCategory: Int,
-    onCategoryClick: (Int) -> Unit
+    onCategoryClick: (Int) -> Unit,
+    categoryCounts: Map<String, Int>
 ) {
     val tabs = listOf("올해", "이번 달", "평생")
     val categories = listOf("전체", "도서", "영화", "공연")
-    val counts = listOf(0, 0, 0, 0) // TODO: 실제 데이터로 대체
+    val counts = listOf(
+        categoryCounts["전체"] ?: 0,
+        categoryCounts["도서"] ?: 0,
+        categoryCounts["영화"] ?: 0,
+        categoryCounts["공연"] ?: 0
+    )
     val categoryColors = listOf(
         Color(0xFFEAF0F8),
         Color(0xFFD4EBFF),
@@ -590,7 +695,7 @@ fun FilterAndCategorySection(
 }
 
 @Composable
-fun RecordList() {
+fun RecordList(userPosts: List<FriendFeedPost>) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -605,13 +710,84 @@ fun RecordList() {
         )
         Spacer(modifier = Modifier.height(16.dp))
 
-        // TODO: 실제 기록 데이터로 대체
-        Text(
-            text = "기록이 없습니다",
-            fontSize = 14.sp,
-            color = Color.Gray,
-            modifier = Modifier.padding(16.dp)
-        )
+        if (userPosts.isEmpty()) {
+            Text(
+                text = "기록이 없습니다",
+                fontSize = 14.sp,
+                color = Color.Gray,
+                modifier = Modifier.padding(16.dp)
+            )
+        } else {
+            userPosts.forEach { post ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // 콘텐츠 이미지
+                        androidx.compose.foundation.Image(
+                            painter = androidx.compose.ui.res.painterResource(id = post.contentImage),
+                            contentDescription = post.contentTitle,
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                        )
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        Column {
+                            Text(
+                                text = post.contentTitle,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                            Text(
+                                text = "${post.contentCategory} ${post.contentYear}",
+                                fontSize = 12.sp,
+                                color = Color.Gray
+                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(top = 4.dp)
+                            ) {
+                                Icon(
+                                    painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_rating_button_star),
+                                    contentDescription = null,
+                                    tint = Color.Blue,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = " ${post.rating}",
+                                    fontSize = 12.sp
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = post.date,
+                                    fontSize = 12.sp,
+                                    color = Color.Gray
+                                )
+                            }
+                            Text(
+                                text = post.reviewText,
+                                fontSize = 12.sp,
+                                color = Color.Gray,
+                                maxLines = 2,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
