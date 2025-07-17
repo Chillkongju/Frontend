@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
@@ -99,12 +100,17 @@ val friendsRecordData = mapOf(
 @Composable
 fun FriendsRecordListScreen(
     category: String,
-    targetMember: MemberInfoResponse? = null
+    targetMember: MemberInfoResponse? = null,
+    onRecordClick: (Long) -> Unit = {},
+    onBackClick: () -> Unit = {}
 ) {
     val categoryName = listOf("전체", "도서", "영화", "공연")
     val initialIndex = categoryName.indexOf(category).takeIf { it >= 0 } ?: 0
     var selected by rememberSaveable { mutableStateOf(initialIndex) }
     var isGridView by rememberSaveable { mutableStateOf(false) }
+
+    var showRecordDetail by remember { mutableStateOf(false) }
+    var selectedRecordId by remember { mutableStateOf<Long?>(null) }
 
     // username을 실제 이름으로 매핑하는 함수
     fun getUserDisplayName(username: String): String {
@@ -120,6 +126,32 @@ fun FriendsRecordListScreen(
     // 사용자별 더미 데이터 가져오기
     val displayName = targetMember?.let { getUserDisplayName(it.username) } ?: "사용자"
     val userRecords = friendsRecordData[displayName] ?: emptyList()
+
+    // 상세 페이지 표시
+    if (showRecordDetail && selectedRecordId != null) {
+        FriendRecordDetailScreen(
+            recordId = selectedRecordId!!,
+            friendName = displayName,
+            onBackClick = {
+                showRecordDetail = false
+                selectedRecordId = null
+            }
+        )
+        return
+    }
+
+    // 상세 페이지 표시
+    if (showRecordDetail && selectedRecordId != null) {
+        FriendRecordDetailScreen(
+            recordId = selectedRecordId!!,
+            friendName = displayName,
+            onBackClick = {
+                showRecordDetail = false
+                selectedRecordId = null
+            }
+        )
+        return
+    }
 
     // 카테고리별 필터링
     val filteredRecords = if (selected == 0) {
@@ -137,12 +169,57 @@ fun FriendsRecordListScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "$displayName's",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.align(Alignment.CenterVertically)
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // 뒤로가기 버튼 추가
+                    IconButton(
+                        onClick = onBackClick,
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = "뒤로가기",
+                            tint = Color.Black
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Text(
+                        text = "$displayName's",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                // 그리드/리스트 버튼 추가
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = { isGridView = false },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_list),
+                            contentDescription = "리스트 보기",
+                            modifier = Modifier.size(20.dp),
+                            tint = if (!isGridView) Blue2 else CoolGray500
+                        )
+                    }
+                    IconButton(
+                        onClick = { isGridView = true },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_grid),
+                            contentDescription = "그리드 보기",
+                            modifier = Modifier.size(20.dp),
+                            tint = if (isGridView) Blue2 else CoolGray500
+                        )
+                    }
+                }
             }
         }
     ) { innerPadding ->
@@ -174,35 +251,6 @@ fun FriendsRecordListScreen(
                                 .background(if (isSelected) Blue2 else CoolGray150)
                                 .clickable { selected = index }
                                 .padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                    }
-                }
-
-                // 리스트/그리드 버튼
-                Row(
-                    modifier = Modifier.align(Alignment.CenterEnd),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = { isGridView = false },
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_list),
-                            contentDescription = "리스트 보기",
-                            modifier = Modifier.size(20.dp),
-                            tint = if (!isGridView) Blue2 else CoolGray500
-                        )
-                    }
-                    IconButton(
-                        onClick = { isGridView = true },
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_grid),
-                            contentDescription = "그리드 보기",
-                            modifier = Modifier.size(20.dp),
-                            tint = if (isGridView) Blue2 else CoolGray500
                         )
                     }
                 }
@@ -242,7 +290,10 @@ fun FriendsRecordListScreen(
                                     .fillMaxWidth()
                                     .aspectRatio(0.7f)
                                     .clip(RoundedCornerShape(8.dp)),
-                                onClick = {}
+                                onClick = {
+                                    selectedRecordId = record.id
+                                    showRecordDetail = true
+                                }
                             )
                         }
                     }
@@ -256,7 +307,10 @@ fun FriendsRecordListScreen(
                             val record = filteredRecords[index]
                             FriendRecordItem(
                                 record = record,
-                                onClick = {}
+                                onClick = {
+                                    selectedRecordId = record.id
+                                    showRecordDetail = true
+                                }
                             )
                         }
                     }

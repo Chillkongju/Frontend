@@ -124,7 +124,9 @@ val friendsFeedData = mapOf(
 @Composable
 fun FriendProfileScreen(
     targetMember: MemberInfoResponse? = null,
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    onRecordListClick: (String) -> Unit = {},
+    onRecordClick: (Long) -> Unit = {}
 ) {
     var isFollowing by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
@@ -135,8 +137,10 @@ fun FriendProfileScreen(
     val scope = rememberCoroutineScope()
     val bottomSheetState = rememberModalBottomSheetState()
     var showBottomSheet by remember { mutableStateOf(false) }
-    var showRecordList by remember { mutableStateOf(false) }
+    var showRecordDetail by remember { mutableStateOf(false) }
+    var selectedRecordId by remember { mutableStateOf<Long?>(null) }
     var selectedCategory by remember { mutableStateOf("전체") }
+    var showRecordList by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     fun getUserDisplayName(username: String): String {
@@ -159,11 +163,36 @@ fun FriendProfileScreen(
         "공연" to userPosts.count { it.contentCategory == "공연" }
     )
 
-    // FriendsRecordListScreen 표시
+    // 기록 리스트 화면 표시
     if (showRecordList) {
         FriendsRecordListScreen(
             category = selectedCategory,
-            targetMember = targetMember
+            targetMember = targetMember,
+            onRecordClick = { recordId ->
+                selectedRecordId = recordId
+                showRecordDetail = true
+                showRecordList = false
+            },
+            onBackClick = {
+                showRecordList = false
+            }
+        )
+        return
+    }
+
+    // 상세 페이지 표시
+    if (showRecordDetail && selectedRecordId != null) {
+        FriendRecordDetailScreen(
+            recordId = selectedRecordId!!,
+            friendName = displayName,
+            onBackClick = {
+                showRecordDetail = false
+                selectedRecordId = null
+                if (showRecordList) {
+                    // 기록 리스트에서 왔다면 기록 리스트로 돌아감
+                    showRecordList = true
+                }
+            }
         )
         return
     }
@@ -405,7 +434,13 @@ fun FriendProfileScreen(
             }
 
             item {
-                RecordList(userPosts = userPosts)
+                RecordList(
+                    userPosts = userPosts,
+                    onRecordClick = { recordId ->
+                        selectedRecordId = recordId
+                        showRecordDetail = true
+                    }
+                )
             }
         }
     }
@@ -695,7 +730,7 @@ fun FilterAndCategorySection(
 }
 
 @Composable
-fun RecordList(userPosts: List<FriendFeedPost>) {
+fun RecordList(userPosts: List<FriendFeedPost>, onRecordClick: (Long) -> Unit = {}) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -722,7 +757,8 @@ fun RecordList(userPosts: List<FriendFeedPost>) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 16.dp),
+                        .padding(bottom = 16.dp)
+                        .clickable { onRecordClick(post.id.toLong()) },
                     colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
