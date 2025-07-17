@@ -35,6 +35,12 @@ import com.example.baba.data.record.WatchedDateManager
 import com.example.baba.ui.profile.EditProfileScreen
 import com.example.baba.ui.record.RecordDetailScreen
 import com.example.baba.ui.record.Record
+import androidx.compose.runtime.getValue
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.navigation
+import androidx.navigation.navOptions
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -103,14 +109,18 @@ class MainActivity : ComponentActivity() {
 fun MainScreen(onLogout: () -> Unit) {
     val navController = rememberNavController()
 
+    // 현재 경로 추적
+    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = currentBackStackEntry?.destination?.route
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         bottomBar = {
             BottomNavigationBar(
-                currentRoute = navController.currentDestination?.route ?: Screen.Home.route,
+                currentRoute = currentRoute ?: Screen.Home.route, // 현재 경로 전달
                 onItemClick = { route ->
                     navController.navigate(route) {
-                        popUpTo(navController.graph.startDestinationId) {
+                        popUpTo(navController.graph.findStartDestination().id) {
                             saveState = true
                         }
                         launchSingleTop = true
