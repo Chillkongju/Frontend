@@ -4,7 +4,7 @@ import com.google.gson.annotations.SerializedName
 
 // 회원 정보 조회 응답 DTO
 data class MemberInfoResponse(
-    @SerializedName("id") val id: Long,  // ← id 필드 추가
+    @SerializedName("id") val id: Long,
     @SerializedName("username") val username: String,
     @SerializedName("name") val name: String,
     @SerializedName("profileImageUrl") val profileImageUrl: String?,
