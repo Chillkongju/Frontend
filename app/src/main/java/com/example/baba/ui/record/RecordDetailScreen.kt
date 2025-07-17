@@ -42,6 +42,7 @@ import com.example.baba.data.comment.CommentResponseDto
 import com.example.baba.data.network.RetrofitInstance
 import com.example.baba.data.network.SessionManager
 import com.example.baba.data.recommendation.RecommendationResponse
+import com.example.baba.data.record.WatchedDateManager
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import com.example.baba.R
@@ -264,7 +265,7 @@ fun RecordDetailScreen(
         }
     }
 
-    // 삭제 다이얼로그
+    // 수정된 삭제 다이얼로그
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
@@ -287,25 +288,52 @@ fun RecordDetailScreen(
                         isDeleting = true
                         coroutineScope.launch {
                             try {
+                                Log.d("Delete", "삭제 시작 - 현재 userId: ${SessionManager.userId}")
+
                                 val userId = SessionManager.userId
                                 if (userId == null || userId <= 0) {
-                                    println("사용자 ID가 없습니다. 다시 로그인해주세요.")
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(context, "사용자 ID가 없습니다. 다시 로그인해주세요.", Toast.LENGTH_SHORT).show()
+                                    }
                                     return@launch
                                 }
 
                                 Log.d("Delete", "삭제 요청: diaryId=${record.id}, memberId=$userId")
+
+                                // API 호출
                                 val response = RetrofitInstance.diaryApi.deleteDiary(
-                                    memberId = userId,
-                                    diaryId = record.id
+                                    diaryId = record.id,
+                                    memberId = userId
                                 )
-                                Log.d("Delete", "삭제 응답: ${response.isSuccessful}, ${response.code()}")
-                                if (response.isSuccessful) {
-                                    navController.popBackStack()
-                                } else {
-                                    Log.e("Delete", "삭제 실패: ${response.errorBody()?.string()}")
+
+                                Log.d("Delete", "삭제 응답: ${response.isSuccessful}, code: ${response.code()}")
+
+                                withContext(Dispatchers.Main) {
+                                    if (response.isSuccessful) {
+                                        // WatchedDateManager에서도 해당 기록 삭제
+                                        WatchedDateManager.removeWatchedDate(record.id)
+
+                                        // SessionManager에 새로고침 플래그 설정
+                                        SessionManager.needsRefresh = true
+
+                                        Toast.makeText(context, "기록이 삭제되었습니다.", Toast.LENGTH_SHORT).show()
+                                        navController.popBackStack()
+                                    } else {
+                                        val errorBody = response.errorBody()?.string()
+                                        Log.e("Delete", "삭제 실패: $errorBody")
+
+                                        when (response.code()) {
+                                            404 -> Toast.makeText(context, "기록을 찾을 수 없습니다.", Toast.LENGTH_SHORT).show()
+                                            403 -> Toast.makeText(context, "삭제 권한이 없습니다.", Toast.LENGTH_SHORT).show()
+                                            else -> Toast.makeText(context, "삭제에 실패했습니다. (${response.code()})", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
                                 }
                             } catch (e: Exception) {
                                 Log.e("Delete", "삭제 오류: ${e.message}", e)
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(context, "네트워크 오류가 발생했습니다: ${e.message}", Toast.LENGTH_SHORT).show()
+                                }
                             } finally {
                                 isDeleting = false
                             }
@@ -319,7 +347,8 @@ fun RecordDetailScreen(
                     if (isDeleting) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(16.dp),
-                            color = Color.White
+                            color = Color.White,
+                            strokeWidth = 2.dp
                         )
                     } else {
                         Text("삭제", color = Color.White)
