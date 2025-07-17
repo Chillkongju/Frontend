@@ -229,7 +229,9 @@ fun MyRecordListScreen(category: String, navController: NavController) {
                 // List View
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(White)
                 ) {
                     items(filteredRecords.size) { index ->
                         val record = filteredRecords[index]
@@ -365,33 +367,37 @@ fun RecordItem(
         WatchedDateManager.initialize(context)
     }
 
-    Row(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .padding(bottom = 16.dp)
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        val imageBitmap = rememberBase64Image(imageBase64)
-
-        Box(
+        Row(
             modifier = Modifier
-                .size(72.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color.LightGray)
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            if (imageBitmap != null) {
-                Image(
-                    bitmap = imageBitmap,
-                    contentDescription = "Thumbnail",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.LightGray),
-                    contentAlignment = Alignment.Center
-                ) {
+            val imageBitmap = rememberBase64Image(imageBase64)
+
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.LightGray),
+                contentAlignment = Alignment.Center
+            ) {
+                if (imageBitmap != null) {
+                    Image(
+                        bitmap = imageBitmap,
+                        contentDescription = "Thumbnail",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
                     Image(
                         painter = painterResource(
                             id = when (category) {
@@ -406,39 +412,55 @@ fun RecordItem(
                     )
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(12.dp))
 
-        Column(
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = title, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(text = category, fontSize = 12.sp, color = Color.Gray)
-            }
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Default.Star,
-                    contentDescription = null,
-                    tint = Color(0xFF1E88E5),
-                    modifier = Modifier.size(16.dp)
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                // 제목
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
                 )
-                Text(text = rating, fontSize = 12.sp)
-                Spacer(modifier = Modifier.width(8.dp))
 
-                val watchedDate = WatchedDateManager.getWatchedDate(id)
-                    ?.format(DateTimeFormatter.ISO_LOCAL_DATE)
-                    ?: date
+                // 카테고리와 연도
+                Text(
+                    text = "${category} ${date.split("-")[0]}",
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
 
-                Text(text = watchedDate, fontSize = 12.sp)
+                // 별점과 날짜
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_rating_button_star),
+                        contentDescription = null,
+                        tint = Color.Blue,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(text = " $rating", fontSize = 12.sp)
+                    Spacer(modifier = Modifier.width(8.dp))
 
-            }
+                    val watchedDate = WatchedDateManager.getWatchedDate(id)
+                        ?.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                        ?: date
 
-            if (comment.isNotBlank()) {
-                Text(text = comment, fontSize = 12.sp)
+                    Text(text = watchedDate, fontSize = 12.sp, color = Color.Gray)
+                }
+
+                // 코멘트
+                if (comment.isNotBlank()) {
+                    Text(
+                        text = comment,
+                        fontSize = 12.sp,
+                        color = Color.Gray,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
             }
         }
     }

@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,8 +20,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
 import androidx.compose.ui.tooling.preview.Preview
 import coil.compose.rememberAsyncImagePainter
@@ -349,6 +354,7 @@ fun FriendProfileScreen(
                 .padding(innerPadding)
                 .padding(horizontal = 8.dp)
                 .padding(bottom = 30.dp)
+                .background(White)
         ) {
             item {
                 if (isCheckingFollowStatus) {
@@ -730,7 +736,10 @@ fun FilterAndCategorySection(
 }
 
 @Composable
-fun RecordList(userPosts: List<FriendFeedPost>, onRecordClick: (Long) -> Unit = {}) {
+fun RecordList(
+    userPosts: List<FriendFeedPost>,
+    onRecordClick: (Long) -> Unit = {}
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -753,74 +762,145 @@ fun RecordList(userPosts: List<FriendFeedPost>, onRecordClick: (Long) -> Unit = 
                 modifier = Modifier.padding(16.dp)
             )
         } else {
-            userPosts.forEach { post ->
-                Card(
+            userPosts.forEachIndexed { index, post ->
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 16.dp)
-                        .clickable { onRecordClick(post.id.toLong()) },
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        .background(Color.White)
+                        .clickable { onRecordClick(post.id.toLong()) }
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    // 이미지와 텍스트 정보를 가로로 배치
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // 콘텐츠 이미지
-                        androidx.compose.foundation.Image(
-                            painter = androidx.compose.ui.res.painterResource(id = post.contentImage),
+                        Image(
+                            painter = painterResource(id = post.contentImage),
                             contentDescription = post.contentTitle,
                             modifier = Modifier
-                                .size(64.dp)
-                                .clip(RoundedCornerShape(8.dp))
+                                .width(68.dp)
+                                .height(100.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(CoolGray200),
+                            contentScale = ContentScale.Crop
                         )
 
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Column {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                        ) {
                             Text(
                                 text = post.contentTitle,
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
+                                color = TextBlack,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
                             )
+
                             Text(
                                 text = "${post.contentCategory} ${post.contentYear}",
                                 fontSize = 12.sp,
-                                color = Color.Gray
-                            )
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(top = 4.dp)
-                            ) {
-                                Icon(
-                                    painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_rating_button_star),
-                                    contentDescription = null,
-                                    tint = Color.Blue,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Text(
-                                    text = " ${post.rating}",
-                                    fontSize = 12.sp
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = post.date,
-                                    fontSize = 12.sp,
-                                    color = Color.Gray
-                                )
-                            }
-                            Text(
-                                text = post.reviewText,
-                                fontSize = 12.sp,
-                                color = Color.Gray,
-                                maxLines = 2,
-                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                modifier = Modifier.padding(top = 4.dp)
+                                color = CoolGray500
                             )
                         }
                     }
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // 별점
+                        Box(
+                            modifier = Modifier
+                                .width(68.dp)
+                                .height(30.dp)
+                                .background(
+                                    color = CoolGray100,
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                .padding(horizontal = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_rating_button_star),
+                                    contentDescription = "별점",
+                                    modifier = Modifier.size(13.dp),
+                                    tint = Blue2
+                                )
+
+                                Spacer(modifier = Modifier.width(4.dp))
+
+                                Text(
+                                    text = post.rating.toString(),
+                                    fontSize = 13.sp,
+                                    color = Blue2,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+
+                        // 날짜
+                        Text(
+                            text = post.date,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = CoolGray500
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(IntrinsicSize.Min)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(2.dp)
+                                .fillMaxHeight()
+                                .background(CoolGray300)
+                        )
+
+                        Spacer(modifier = Modifier.width(10.dp))
+
+                        Column {
+                            Text(
+                                text = post.reviewText,
+                                fontSize = 14.sp,
+                                color = CoolGray700,
+                                lineHeight = 20.sp,
+                                maxLines = 5,
+                                overflow = TextOverflow.Ellipsis
+                            )
+
+                            if (post.reviewText.length > 50) {
+                                Text(
+                                    text = "더보기",
+                                    fontSize = 12.sp,
+                                    color = Blue4,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier
+                                        .padding(top = 4.dp)
+                                        .clickable { onRecordClick(post.id.toLong()) }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (index < userPosts.size - 1) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 20.dp),
+                        thickness = 1.dp,
+                        color = CoolGray100
+                    )
                 }
             }
         }

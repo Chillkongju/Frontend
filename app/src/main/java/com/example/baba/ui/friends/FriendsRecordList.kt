@@ -301,7 +301,9 @@ fun FriendsRecordListScreen(
                     // List View
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(White)
                     ) {
                         items(filteredRecords.size) { index ->
                             val record = filteredRecords[index]
@@ -381,104 +383,107 @@ fun FriendRecordItem(
     record: FriendRecordData,
     onClick: () -> Unit = {}
 ) {
-    Row(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(White)
             .clickable { onClick() }
-            .padding(vertical = 5.dp),
-        verticalAlignment = Alignment.Top
+            .padding(16.dp)
     ) {
-        // 썸네일 이미지
-        Box(
-            modifier = Modifier
-                .size(width = 72.dp, height = 100.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color.LightGray),
-            contentAlignment = Alignment.Center
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            if (record.image != null) {
-                Image(
-                    painter = painterResource(id = record.image),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                // 카테고리 아이콘
-                Image(
-                    painter = painterResource(
-                        id = when (record.category) {
-                            "도서" -> R.drawable.recommend_book
-                            "영화" -> R.drawable.recommend_movie
-                            "공연" -> R.drawable.recommend_show
-                            else -> R.drawable.ic_add
-                        }
-                    ),
-                    contentDescription = "카테고리 아이콘",
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        // 텍스트 영역
-        Column(modifier = Modifier.weight(1f)) {
-            // 제목 + 카테고리
-            Row(
-                verticalAlignment = Alignment.CenterVertically
+            // 썸네일 이미지
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.LightGray),
+                contentAlignment = Alignment.Center
             ) {
+                if (record.image != null) {
+                    Image(
+                        painter = painterResource(id = record.image),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    // 카테고리 아이콘
+                    Image(
+                        painter = painterResource(
+                            id = when (record.category) {
+                                "도서" -> R.drawable.recommend_book
+                                "영화" -> R.drawable.recommend_movie
+                                "공연" -> R.drawable.recommend_show
+                                else -> R.drawable.ic_add
+                            }
+                        ),
+                        contentDescription = "카테고리 아이콘",
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // 텍스트 영역
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                // 제목
                 Text(
                     text = record.title,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
+                    fontSize = 14.sp,
+                    color = Color.Black
                 )
-                Spacer(modifier = Modifier.width(6.dp))
+
+                // 카테고리와 연도
                 Text(
-                    text = record.category,
+                    text = "${record.category} · ${record.date.split(".")[0]}",
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
+
+                Spacer(modifier = Modifier.height(2.dp))
+
+                // 별점 + 날짜
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_rating_button_star),
+                        contentDescription = null,
+                        tint = Color(0xFF1E88E5),
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        text = " ${record.rating}",
+                        fontSize = 12.sp,
+                        color = Color.Black
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = record.date,
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
+                }
+
+                // 코멘트
+                if (record.comment.isNotBlank()) {
+                    Text(
+                        text = record.comment,
+                        fontSize = 12.sp,
+                        color = Color.Gray,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
             }
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            // 별점 + 날짜
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.Star,
-                    contentDescription = null,
-                    tint = Color(0xFF1E88E5),
-                    modifier = Modifier.size(14.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(text = record.rating, fontSize = 12.sp)
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(text = record.date, fontSize = 12.sp, color = Color.Gray)
-            }
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            // 코멘트
-            Text(
-                text = record.comment,
-                fontSize = 12.sp,
-                color = Color.Gray,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-
-        // 더보기 아이콘
-        IconButton(
-            onClick = { /* TODO: Show options */ },
-            modifier = Modifier.size(24.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.MoreVert,
-                contentDescription = "더보기",
-                tint = Color.Gray
-            )
         }
     }
 }
